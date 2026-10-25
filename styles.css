@@ -1737,7 +1737,7 @@ body {
 .terminal-dot.green { background: #10b981; }
 
 .serial-terminal {
-  height: 130px;
+  height: 280px;
   background: #090d16;
   border-radius: var(--radius-sm);
   padding: 8px 10px;
