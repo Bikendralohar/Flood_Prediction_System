@@ -900,52 +900,6 @@
             <div class="serial-line info">[SYSTEM] Web Serial API ready. Click "⚡ Connect Real ESP32" to stream live hardware.</div>
           </div>
         </div>
-
-        <!-- Simulation Interactive Controls (Virtual Offline Testing Only) -->
-        <div class="card controls-card hidden" id="simControlsCard">
-          <div class="sim-disabled-notice hidden" id="simDisabledNotice">
-            ℹ️ <strong>Real Measurements Mode:</strong> Environmental sliders are paused because telemetry is read exclusively from physical ESP32 hardware pins. Switch to "Virtual Simulator" at the top to test slider animations offline.
-          </div>
-          <div class="card-title">🧪 Virtual Simulator Environmental Overrides (Offline Only)</div>
-
-          <!-- Rain Intensity Selector -->
-          <div class="control-group">
-            <div class="control-header">
-              <label>Rainfall Intensity</label>
-              <span class="control-val" id="rainIntensityLabel">Dry (0 mm/h)</span>
-            </div>
-            <div class="rain-buttons-group">
-              <button class="btn btn-rain active" data-rain="0">Dry</button>
-              <button class="btn btn-rain" data-rain="1">Light</button>
-              <button class="btn btn-rain" data-rain="2">Heavy</button>
-              <button class="btn btn-rain" data-rain="3">Torrential</button>
-            </div>
-          </div>
-
-          <!-- Upstream River Inflow Slider -->
-          <div class="control-group">
-            <div class="control-header">
-              <label for="inflowSlider">Upstream River Inflow</label>
-              <span class="control-val" id="inflowValueLabel">0.0 cm/s</span>
-            </div>
-            <input type="range" id="inflowSlider" min="0" max="1.5" step="0.05" value="0.0" class="slider">
-          </div>
-
-          <!-- Direct Manual Water Level Override -->
-          <div class="control-group">
-            <div class="control-header">
-              <label for="manualWaterSlider">Manual Water Level Override</label>
-              <span class="control-val" id="manualWaterLabel">5.0 cm (25%)</span>
-            </div>
-            <input type="range" id="manualWaterSlider" min="0" max="23.5" step="0.1" value="5.0" class="slider">
-            <div class="slider-ticks">
-              <span>0 cm (Empty)</span>
-              <span>15 cm (Warning)</span>
-              <span>20 cm (Critical)</span>
-              <span>23.5 cm (Full)</span>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- Right Column: Live Telemetry, Controls, and Predictive Engine -->
@@ -1088,6 +1042,52 @@
           </div>
           <div class="chart-wrapper">
             <canvas id="telemetryChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Simulation Interactive Controls (Virtual Offline Testing Only) -->
+        <div class="card controls-card hidden" id="simControlsCard">
+          <div class="sim-disabled-notice hidden" id="simDisabledNotice">
+            ℹ️ <strong>Real Measurements Mode:</strong> Environmental sliders are paused because telemetry is read exclusively from physical ESP32 hardware pins. Switch to "Virtual Simulator" at the top to test slider animations offline.
+          </div>
+          <div class="card-title">🧪 Virtual Simulator Environmental Overrides (Offline Only)</div>
+
+          <!-- Rain Intensity Selector -->
+          <div class="control-group">
+            <div class="control-header">
+              <label>Rainfall Intensity</label>
+              <span class="control-val" id="rainIntensityLabel">Dry (0 mm/h)</span>
+            </div>
+            <div class="rain-buttons-group">
+              <button class="btn btn-rain active" data-rain="0">Dry</button>
+              <button class="btn btn-rain" data-rain="1">Light</button>
+              <button class="btn btn-rain" data-rain="2">Heavy</button>
+              <button class="btn btn-rain" data-rain="3">Torrential</button>
+            </div>
+          </div>
+
+          <!-- Upstream River Inflow Slider -->
+          <div class="control-group">
+            <div class="control-header">
+              <label for="inflowSlider">Upstream River Inflow</label>
+              <span class="control-val" id="inflowValueLabel">0.0 cm/s</span>
+            </div>
+            <input type="range" id="inflowSlider" min="0" max="1.5" step="0.05" value="0.0" class="slider">
+          </div>
+
+          <!-- Direct Manual Water Level Override -->
+          <div class="control-group">
+            <div class="control-header">
+              <label for="manualWaterSlider">Manual Water Level Override</label>
+              <span class="control-val" id="manualWaterLabel">5.0 cm (25%)</span>
+            </div>
+            <input type="range" id="manualWaterSlider" min="0" max="23.5" step="0.1" value="5.0" class="slider">
+            <div class="slider-ticks">
+              <span>0 cm (Empty)</span>
+              <span>15 cm (Warning)</span>
+              <span>20 cm (Critical)</span>
+              <span>23.5 cm (Full)</span>
+            </div>
           </div>
         </div>
       </section>
