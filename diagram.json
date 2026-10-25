@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "author": "Flood Prediction & Early Warning System",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-breadboard",
+      "id": "bb",
+      "top": 90,
+      "left": -260,
+      "attrs": {}
+    },
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": -40,
+      "left": 40,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonic",
+      "top": -200,
+      "left": -280,
+      "attrs": { "distance": "35", "label": "ULTRASONIC (TRIG: 5, ECHO: 18)" }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "rain_sensor",
+      "top": -190,
+      "left": -50,
+      "attrs": { "value": "0", "label": "RAIN SENSOR DO (GPIO 25)" }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_water",
+      "top": 240,
+      "left": 190,
+      "attrs": { "label": "WATER SENSOR (GPIO 35)" }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay",
+      "top": -200,
+      "left": 230,
+      "attrs": { "label": "RELAY (GPIO 23)" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_green",
+      "top": 240,
+      "left": -180,
+      "attrs": { "color": "green", "label": "SAFE (GPIO 19)" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_green",
+      "top": 310,
+      "left": -190,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_yellow",
+      "top": 240,
+      "left": -100,
+      "attrs": { "color": "yellow", "label": "WATCH (GPIO 21)" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_yellow",
+      "top": 310,
+      "left": -110,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_red",
+      "top": 240,
+      "left": -20,
+      "attrs": { "color": "red", "label": "DANGER (GPIO 22)" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_red",
+      "top": 310,
+      "left": -30,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": 230,
+      "left": 90,
+      "attrs": { "volume": "0.5", "label": "BUZZER (GPIO 26)" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_div1",
+      "top": -100,
+      "left": -200,
+      "attrs": { "value": "1000", "label": "1kΩ" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_div2",
+      "top": -60,
+      "left": -200,
+      "attrs": { "value": "2000", "label": "2kΩ" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "pump_indicator",
+      "top": -190,
+      "left": 410,
+      "attrs": { "color": "blue", "label": "12V PUMP" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_pump",
+      "top": -140,
+      "left": 410,
+      "attrs": { "value": "220" }
+    }
+  ],
+  "connections": [
+    [ "esp:5V", "bb:tp.15", "red", [ "v20", "h-150" ] ],
+    [ "esp:GND.1", "bb:tn.15", "black", [ "v30", "h-140" ] ],
+
+    [ "ultrasonic:VCC", "bb:tp.2", "red", [ "v60", "h-20" ] ],
+    [ "ultrasonic:GND", "bb:tn.2", "black", [ "v70", "h-10" ] ],
+    [ "ultrasonic:TRIG", "esp:5", "green", [ "v-50", "h360", "v120" ] ],
+
+    [ "ultrasonic:ECHO", "r_div1:1", "gold", [ "v50", "h30" ] ],
+    [ "r_div1:2", "r_div2:1", "gold", [ "v15" ] ],
+    [ "r_div1:2", "esp:18", "gold", [ "v0", "h240", "v50" ] ],
+    [ "r_div2:2", "bb:tn.6", "black", [ "v0", "h-30", "v80" ] ],
+
+    [ "esp:25", "rain_sensor:2", "purple", [ "v-40", "h-60" ] ],
+    [ "rain_sensor:1", "bb:tn.12", "black", [ "v50", "h-120" ] ],
+
+    [ "pot_water:GND", "bb:bn.24", "black", [ "v20", "h-40" ] ],
+    [ "pot_water:VCC", "bb:tp.20", "red", [ "v-20", "h-40" ] ],
+    [ "pot_water:SIG", "esp:35", "cyan", [ "v40", "h-60" ] ],
+
+    [ "esp:5V", "relay:VCC", "red", [ "v-40", "h180" ] ],
+    [ "esp:GND.2", "relay:GND", "black", [ "v-50", "h160" ] ],
+    [ "esp:23", "relay:IN", "orange", [ "v-60", "h130" ] ],
+
+    [ "relay:NO", "pump_indicator:A", "blue", [ "v-30", "h90" ] ],
+    [ "pump_indicator:C", "r_pump:1", "blue", [ "v10" ] ],
+    [ "r_pump:2", "esp:GND.2", "black", [ "v30", "h-240" ] ],
+
+    [ "esp:19", "led_green:A", "green", [ "v70", "h-200" ] ],
+    [ "led_green:C", "r_green:1", "black", [ "v10" ] ],
+    [ "r_green:2", "bb:bn.4", "black", [ "v20", "h-40" ] ],
+
+    [ "esp:21", "led_yellow:A", "gold", [ "v80", "h-130" ] ],
+    [ "led_yellow:C", "r_yellow:1", "black", [ "v10" ] ],
+    [ "r_yellow:2", "bb:bn.10", "black", [ "v20", "h-40" ] ],
+
+    [ "esp:22", "led_red:A", "red", [ "v90", "h-60" ] ],
+    [ "led_red:C", "r_red:1", "black", [ "v10" ] ],
+    [ "r_red:2", "bb:bn.16", "black", [ "v20", "h-40" ] ],
+
+    [ "esp:26", "buzzer:2", "cyan", [ "v60", "h20" ] ],
+    [ "buzzer:1", "bb:bn.22", "black", [ "v40", "h-120" ] ],
+
+    [ "bb:tn.25", "bb:bn.25", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

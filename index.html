@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Flood Prediction & Early Warning System Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Flood Early Warning &amp; Prediction System</h1>
+          <div class="brand-badges">
+            <span class="badge-chip">ESP32 DevKit V1</span>
+            <span class="badge-chip">HC-SR04 + Immersion Dual-Confirm</span>
+            <span class="badge-chip">26cm Tank &bull; 2.5cm Deadzone</span>
+            <button id="btnHeaderPumpToggle" class="btn-header-chip" title="Toggle Real 12V Pump on Relay GPIO 23">
+              <span>💧 Pump: <strong id="headerPumpState">OFF</strong></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Mode Switcher: Strict Real Measurements vs Virtual Simulator -->
+        <div class="mode-switch-group">
+          <button id="btnModeHardware" class="btn-mode active mode-hw" title="Strict Real Hardware: streams physical sensor measurements directly from ESP32 USB COM port">
+            <span>🔌</span> Real Hardware
+          </button>
+          <button id="btnModeSimulator" class="btn-mode" title="Virtual Simulator: test graphics and alarm logic offline without physical board">
+            <span>🧪</span> Simulator
+          </button>
+        </div>
+
+        <!-- Live Alert Badge -->
+        <div id="systemStatusBadge" class="status-badge status-safe">
+          <span class="status-dot"></span>
+          <span id="systemStatusText">SYSTEM NORMAL</span>
+        </div>
+
+        <!-- Live Hardware Connection Status -->
+        <div id="hardwareStatusBadge" class="status-badge status-sim" title="Sensor data source: Virtual Simulator or Physical ESP32">
+          <span class="status-dot"></span>
+          <span id="hardwareStatusText">DISCONNECTED</span>
+        </div>
+
+        <!-- Connect Real Hardware Button -->
+        <button id="btnConnectHardware" class="btn btn-primary-glow" title="Connect directly to ESP32 over USB Serial Port (Chrome / Edge)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          <span id="connectHardwareLabel">⚡ Connect ESP32</span>
+        </button>
+
+        <!-- Audio Buzzer Mute Toggle -->
+        <button id="audioToggleBtn" class="btn btn-icon" title="Toggle Buzzer & Sound FX">
+          <svg id="audioIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <span id="audioLabel">Sound ON</span>
+        </button>
+
+        <!-- View Schematic Button -->
+        <button id="viewSchematicBtn" class="btn btn-secondary" title="View Wiring Reference & Schematic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          Wiring Table
+        </button>
+      </div>
+    </header>
+
+    <!-- Real Hardware Live Status Banner -->
+    <div id="hardwareLiveBanner" class="hardware-live-banner banner-hw-disconnected">
+      <div class="banner-content">
+        <span class="banner-icon">⚡</span>
+        <span id="hardwareBannerText">
+          <strong>Real Hardware Mode Active:</strong> Data streams directly from the physical ESP32 USB COM port. Connect your board and click <strong>"Connect ESP32"</strong>.
+        </span>
+      </div>
+      <div class="banner-actions">
+        <button id="btnBannerConnect" class="btn btn-primary-glow btn-compact">
+          ⚡ Select USB Port
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Workspace Grid -->
+    <main class="dashboard-grid">
+      <!-- Left Column: Physical River Tank & Breadboard Hardware Model -->
+      <section class="visual-panel">
+        <!-- Primary View Switcher -->
+        <div class="panel-tabs">
+          <button class="tab-btn active" data-tab="real-hardware-view">
+            <span class="tab-icon">🔬</span> Hardware Twin
+          </button>
+          <button class="tab-btn" data-tab="architecture-view">
+            <span class="tab-icon">📐</span> Schematic Diagram
+          </button>
+          <button class="tab-btn" data-tab="physical-bench-view">
+            <span class="tab-icon">🌊</span> River Lab Bench
+          </button>
+          <button class="tab-btn" data-tab="wiring-table-view">
+            <span class="tab-icon">📋</span> Pinout &amp; Wiring
+          </button>
+        </div>
+
+        <!-- View 0: REAL INSTRUMENTS WORKBENCH (Photorealistic Twin with Live HUD) -->
+        <div id="real-hardware-view" class="tab-content active">
+          <div class="real-workbench-container">
+            <div class="workbench-image-wrapper">
+              <img src="real_hardware_setup.jpg" alt="Real Instruments Hardware Setup" class="workbench-photo" id="workbenchPhoto">
+              
+              <!-- Real Jumper Wires connecting JSN-SR04T and Modules to the Breadboard -->
+              <svg class="workbench-wires-svg" viewBox="0 0 1000 562.5" preserveAspectRatio="none">
+                <defs>
+                  <filter id="wire-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="rgba(0,0,0,0.6)" />
+                  </filter>
+                </defs>
+
+                <!-- JUMPER WIRE 1: JSN-SR04T VCC (Red) -> Breadboard 5V / VIN Rail -->
+                <path d="M 116 170 C 95 240, 110 390, 310 400 L 335 400" stroke="rgba(0,0,0,0.5)" stroke-width="5.5" fill="none" />
+                <path d="M 116 170 C 95 240, 110 390, 310 400 L 335 400" stroke="#ef4444" stroke-width="3.8" stroke-linecap="round" fill="none" filter="url(#wire-shadow)" />
+                <path d="M 116 170 C 95 240, 110 390, 310 400 L 335 400" stroke="#fca5a5" stroke-width="1.2" stroke-dasharray="4 14" class="wire-pulse" fill="none" />
+                <!-- Dupont connector boot at sensor pin -->
+                <rect x="110" y="165" width="12" height="7" rx="1.5" fill="#18181b" stroke="#52525b" stroke-width="1" transform="rotate(-35 116 168)" />
+                <text x="75" y="165" fill="#fca5a5" font-size="9" font-weight="bold" font-family="'JetBrains Mono', monospace">VCC (5V)</text>
+
+                <!-- JUMPER WIRE 2: JSN-SR04T GND (Black) -> Breadboard GND Rail -->
+                <path d="M 144 144 C 120 220, 140 430, 300 422 L 335 422" stroke="rgba(0,0,0,0.5)" stroke-width="5.5" fill="none" />
+                <path d="M 144 144 C 120 220, 140 430, 300 422 L 335 422" stroke="#18181b" stroke-width="4.2" stroke-linecap="round" fill="none" filter="url(#wire-shadow)" />
+                <path d="M 144 144 C 120 220, 140 430, 300 422 L 335 422" stroke="#64748b" stroke-width="1.2" stroke-dasharray="4 14" class="wire-pulse" fill="none" />
+                <!-- Dupont connector boot -->
+                <rect x="138" y="139" width="12" height="7" rx="1.5" fill="#18181b" stroke="#52525b" stroke-width="1" transform="rotate(-35 144 142)" />
+                <text x="145" y="135" fill="#cbd5e1" font-size="9" font-weight="bold" font-family="'JetBrains Mono', monospace">GND</text>
+
+                <!-- JUMPER WIRE 3: JSN-SR04T TRIG (Green) -> ESP32 GPIO 5 -->
+                <path d="M 125 161 C 180 200, 290 250, 448 285" stroke="rgba(0,0,0,0.5)" stroke-width="5.5" fill="none" />
+                <path d="M 125 161 C 180 200, 290 250, 448 285" stroke="#10b981" stroke-width="3.8" stroke-linecap="round" fill="none" filter="url(#wire-shadow)" />
+                <path d="M 125 161 C 180 200, 290 250, 448 285" stroke="#a7f3d0" stroke-width="1.5" stroke-dasharray="4 14" class="wire-pulse" fill="none" />
+                <!-- Dupont connector boot -->
+                <rect x="119" y="156" width="12" height="7" rx="1.5" fill="#18181b" stroke="#52525b" stroke-width="1" transform="rotate(-35 125 159)" />
+                <text x="80" y="180" fill="#6ee7b7" font-size="9" font-weight="bold" font-family="'JetBrains Mono', monospace">TRIG (5)</text>
+
+                <!-- JUMPER WIRE 4: JSN-SR04T ECHO (Yellow/Gold) -> Voltage Divider to GPIO 18 -->
+                <path d="M 134 153 C 200 185, 330 310, 520 365" stroke="rgba(0,0,0,0.5)" stroke-width="5.5" fill="none" />
+                <path d="M 134 153 C 200 185, 330 310, 520 365" stroke="#f59e0b" stroke-width="3.8" stroke-linecap="round" fill="none" filter="url(#wire-shadow)" />
+                <path d="M 134 153 C 200 185, 330 310, 520 365" stroke="#fef08a" stroke-width="1.5" stroke-dasharray="4 14" class="wire-pulse" fill="none" />
+                <!-- Dupont connector boot -->
+                <rect x="128" y="148" width="12" height="7" rx="1.5" fill="#18181b" stroke="#52525b" stroke-width="1" transform="rotate(-35 134 151)" />
+                <text x="145" y="165" fill="#fde68a" font-size="9" font-weight="bold" font-family="'JetBrains Mono', monospace">ECHO (18)</text>
+
+                <!-- Breadboard connection callout pin markers -->
+                <circle cx="335" cy="400" r="4.5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" />
+                <circle cx="335" cy="422" r="4.5" fill="#18181b" stroke="#ffffff" stroke-width="1.5" />
+                <circle cx="448" cy="285" r="4.5" fill="#10b981" stroke="#ffffff" stroke-width="1.5" />
+                <circle cx="520" cy="365" r="4.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" />
+              </svg>
+
+              <!-- Live Interactive HUD Hotspots over the Real Instruments -->
+              <div class="workbench-hud-overlay">
+                <!-- HC-SR04 Ultrasonic Sensor Hotspots -->
+                <div class="hud-hotspot" style="top: 25%; left: 16%;" title="HC-SR04 Ultrasonic Sensor (5V VIN, TRIG GPIO 5, ECHO GPIO 18)" id="hotspotJsnBoard">
+                  <div class="hud-marker marker-pulse-cyan"></div>
+                  <div class="hud-tooltip">
+                    <strong>HC-SR04 Sensor</strong>
+                    <span>TRIG: GPIO 5 | ECHO: GPIO 18</span>
+                  </div>
+                </div>
+
+                <div class="hud-hotspot" style="top: 55%; left: 14%;" title="HC-SR04 Ultrasonic Sensor (Mounted at 26 cm)" id="hotspotJsnProbe">
+                  <div class="hud-marker marker-pulse-cyan"></div>
+                  <div class="hud-badge-live" id="hudDistVal">21.0 cm</div>
+                </div>
+
+                <!-- Rain Drop Sensor & LM393 Module Hotspots -->
+                <div class="hud-hotspot" style="top: 20%; left: 41%;" title="Raindrop Sensor PCB Plate (AO to GPIO 34)" id="hotspotRainPlate">
+                  <div class="hud-marker marker-pulse-purple"></div>
+                  <div class="hud-badge-live rain-safe" id="hudRainPlateStatus">DRY</div>
+                </div>
+
+                <div class="hud-hotspot" style="top: 20%; left: 56%;" title="LM393 Comparator Module (AO: GPIO 34 | DO: GPIO 25)" id="hotspotLm393">
+                  <div class="hud-marker marker-pulse-purple"></div>
+                  <div class="hud-tooltip">
+                    <strong>Rain Module</strong>
+                    <span id="hudLm393State">AO: GPIO 34 | DO: GPIO 25</span>
+                  </div>
+                </div>
+
+                <!-- ESP32 DevKit V1 Hotspot -->
+                <div class="hud-hotspot" style="top: 56%; left: 39%;" title="ESP32 DevKit V1 (ESP-WROOM-32)" id="hotspotEsp32">
+                  <div class="hud-marker marker-pulse-blue"></div>
+                  <div class="hud-tooltip">
+                    <strong>ESP32 DevKit V1</strong>
+                    <span>Core Clock: 240MHz &bull; WiFi &bull; 30 Pins</span>
+                  </div>
+                </div>
+
+                <!-- Green LED (GPIO 19) Live Optical Glow Hotspot -->
+                <div class="hud-hotspot" style="top: 55.5%; left: 50.4%;" title="Green LED: GPIO 19 (Low Risk / Safe)" id="hotspotLedGreen">
+                  <div class="hud-led-glow glow-green active" id="hudLedGreen"></div>
+                  <div class="hud-tag-micro">SAFE (19)</div>
+                </div>
+
+                <!-- Yellow LED (GPIO 21) Live Optical Glow Hotspot -->
+                <div class="hud-hotspot" style="top: 55.5%; left: 54.8%;" title="Yellow LED: GPIO 21 (Watch / Alert)" id="hotspotLedYellow">
+                  <div class="hud-led-glow glow-yellow" id="hudLedYellow"></div>
+                  <div class="hud-tag-micro">ALERT (21)</div>
+                </div>
+
+                <!-- Red LED (GPIO 22) Live Optical Glow Hotspot -->
+                <div class="hud-hotspot" style="top: 55.5%; left: 59.2%;" title="Red LED: GPIO 22 (Flood Danger)" id="hotspotLedRed">
+                  <div class="hud-led-glow glow-red" id="hudLedRed"></div>
+                  <div class="hud-tag-micro">FLOOD (22)</div>
+                </div>
+
+                <!-- Buzzer (GPIO 26) Vibration Hotspot -->
+                <div class="hud-hotspot" style="top: 56%; left: 65.5%;" title="Piezo Buzzer (Signal: GPIO 26 & GND)" id="hotspotBuzzer">
+                  <div class="hud-buzzer-waves" id="hudBuzzerWaves"></div>
+                  <div class="hud-tag-micro">ALARM (26)</div>
+                </div>
+
+                <!-- 1-Channel 5V Relay Hotspot -->
+                <div class="hud-hotspot" style="top: 38%; left: 77%;" title="1-Channel 5V Relay (GPIO 23 to IN)" id="hotspotRelay">
+                  <div class="hud-marker marker-pulse-orange" id="hudRelayMarker"></div>
+                  <div class="hud-badge-live relay-off" id="hudRelayBadge">RELAY OFF (23)</div>
+                </div>
+
+                <!-- 12V DC Power Adapter Hotspot -->
+                <div class="hud-hotspot" style="top: 16%; left: 91%;" title="12V 2A DC Power Adapter (Connected to Relay COM)" id="hotspotAdapter">
+                  <div class="hud-marker"></div>
+                  <div class="hud-tooltip">
+                    <strong>12V DC Power Supply</strong>
+                    <span>COM &rarr; 12V (+), GND &rarr; Pump (-)</span>
+                  </div>
+                </div>
+
+                <!-- 12V Submersible DC Water Pump Hotspot -->
+                <div class="hud-hotspot" style="top: 72%; left: 86%;" title="12V Submersible Water Pump (Positive to Relay NO, Negative to Supply -)" id="hotspotPump">
+                  <div class="hud-pump-vibe" id="hudPumpVibe"></div>
+                  <div class="hud-badge-live pump-idle" id="hudPumpBadge">PUMP IDLE</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Bottom Interactive Legend -->
+            <div class="workbench-legend">
+              <span class="legend-hint">💡 <em>Real Instruments View: Click any component on the workbench (Rain plate, ultrasonic probe, relay, or pump) to test and interact live!</em></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 1: 1:1 INTERACTIVE SCHEMATIC ARCHITECTURE -->
+        <div id="architecture-view" class="tab-content">
+          <div class="schematic-board-container">
+            <div class="schematic-canvas-wrapper" id="schematicCanvasWrapper">
+              <!-- Interactive SVG Diagram Matching User Schematic 1:1 -->
+              <svg id="schematicSvg" viewBox="0 0 1200 760" class="schematic-svg">
+                <defs>
+                  <!-- Filters for glowing wires and LEDs -->
+                  <filter id="glow-green" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                  <filter id="glow-yellow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                  <filter id="glow-red" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="5" result="blur" />
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                  <filter id="glow-cyan" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+
+                  <!-- Wire Current Flow Dash Animation -->
+                  <style>
+                    .wire-pulse { stroke-dasharray: 6 6; animation: wireFlow 0.8s linear infinite; }
+                    .wire-pulse-fast { stroke-dasharray: 4 4; animation: wireFlow 0.4s linear infinite; }
+                    @keyframes wireFlow { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+                  </style>
+                </defs>
+
+                <!-- Background Grid -->
+                <rect width="1200" height="760" fill="#0d1322" rx="12" />
+                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                </pattern>
+                <rect width="1200" height="760" fill="url(#grid)" rx="12" />
+
+                <!-- SECTION 1: WATER LEVEL SENSOR (JSN-SR04T) [Top-Left] -->
+                <g id="comp-jsn-sr04t" class="svg-comp" transform="translate(30, 30)">
+                  <!-- Border Card -->
+                  <rect width="210" height="210" rx="8" fill="#131d31" stroke="#2563eb" stroke-width="1.5" />
+                  <rect width="210" height="26" rx="8" fill="#1e3a8a" />
+                  <text x="105" y="17" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">1. Water Level Sensor (JSN-SR04T)</text>
+
+                  <!-- Transducer Probe -->
+                  <circle cx="70" cy="85" r="28" fill="#1e293b" stroke="#64748b" stroke-width="3" />
+                  <circle cx="70" cy="85" r="20" fill="#0f172a" />
+                  <circle cx="70" cy="85" r="8" fill="#0284c7" id="svgTransducerCenter" />
+                  <text x="70" y="128" fill="#94a3b8" font-size="9" text-anchor="middle">Waterproof Probe</text>
+
+                  <!-- Driver Module Board -->
+                  <rect x="125" y="45" width="70" height="90" rx="4" fill="#0284c7" stroke="#38bdf8" stroke-width="1" />
+                  <text x="160" y="60" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">JSN-SR04T</text>
+                  <text x="160" y="70" fill="#bae6fd" font-size="7" text-anchor="middle">TRANSCEIVER</text>
+                  
+                  <!-- Cable between probe and board -->
+                  <path d="M 98 85 Q 112 85 125 85" fill="none" stroke="#0f172a" stroke-width="5" />
+
+                  <!-- Driver Board Pins -->
+                  <circle cx="138" cy="120" r="3" fill="#cbd5e1" /><text x="138" y="132" fill="#e2e8f0" font-size="7" text-anchor="middle">VCC</text>
+                  <circle cx="152" cy="120" r="3" fill="#cbd5e1" /><text x="152" y="132" fill="#e2e8f0" font-size="7" text-anchor="middle">TRIG</text>
+                  <circle cx="166" cy="120" r="3" fill="#cbd5e1" /><text x="166" y="132" fill="#e2e8f0" font-size="7" text-anchor="middle">ECHO</text>
+                  <circle cx="180" cy="120" r="3" fill="#cbd5e1" /><text x="180" y="132" fill="#e2e8f0" font-size="7" text-anchor="middle">GND</text>
+
+                  <!-- Live Reading Badge -->
+                  <rect x="25" y="150" width="160" height="42" rx="4" fill="#090d16" stroke="#334155" />
+                  <text x="105" y="166" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">Live Air Distance</text>
+                  <text x="105" y="184" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle" id="svgSensorDistVal">35.0 cm</text>
+                </g>
+
+                <!-- SECTION 2: RAINFALL SENSOR (RAIN DROP MODULE) [Top Middle-Left] -->
+                <g id="comp-rain-sensor" class="svg-comp" transform="translate(260, 30)">
+                  <!-- Border Card -->
+                  <rect width="210" height="210" rx="8" fill="#131d31" stroke="#2563eb" stroke-width="1.5" />
+                  <rect width="210" height="26" rx="8" fill="#1e3a8a" />
+                  <text x="105" y="17" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">2. Rainfall Sensor (Rain Drop)</text>
+
+                  <!-- PCB Rain Plate -->
+                  <rect x="20" y="45" width="75" height="90" rx="4" fill="#064e3b" stroke="#059669" stroke-width="1.5" />
+                  <!-- PCB interlaced nickel traces -->
+                  <path d="M 26 55 L 85 55 M 26 63 L 80 63 M 31 71 L 85 71 M 26 79 L 80 79 M 31 87 L 85 87 M 26 95 L 80 95 M 31 103 L 85 103 M 26 111 L 80 111 M 31 119 L 85 119 M 26 127 L 85 127" stroke="#34d399" stroke-width="1.5" />
+                  <!-- Droplets on plate -->
+                  <g id="svgPcbDrops" opacity="0">
+                    <circle cx="45" cy="70" r="4" fill="#38bdf8" opacity="0.8" />
+                    <circle cx="65" cy="95" r="3.5" fill="#38bdf8" opacity="0.8" />
+                    <circle cx="40" cy="115" r="4.5" fill="#38bdf8" opacity="0.8" />
+                  </g>
+
+                  <!-- LM393 Comparator Module -->
+                  <rect x="115" y="45" width="80" height="90" rx="4" fill="#1e3a8a" stroke="#3b82f6" stroke-width="1" />
+                  <text x="155" y="60" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">LM393 MODULE</text>
+                  <rect x="135" y="66" width="40" height="16" rx="2" fill="#0f172a" />
+                  <text x="155" y="77" fill="#93c5fd" font-size="7" text-anchor="middle">LM393 IC</text>
+                  <!-- Blue potentiometer -->
+                  <rect x="145" y="87" width="20" height="15" fill="#2563eb" rx="2" />
+                  <circle cx="155" cy="94" r="4" fill="#cbd5e1" />
+
+                  <!-- DO & PWR LEDs -->
+                  <circle cx="130" cy="112" r="3" fill="#ef4444" id="svgRainPwrLed" /><text x="130" y="122" fill="#94a3b8" font-size="6" text-anchor="middle">PWR</text>
+                  <circle cx="178" cy="112" r="3" fill="#334155" id="svgRainDoLed" /><text x="178" y="122" fill="#94a3b8" font-size="6" text-anchor="middle">DO</text>
+
+                  <!-- Header Pins -->
+                  <text x="130" y="132" fill="#e2e8f0" font-size="7" text-anchor="middle">VCC</text>
+                  <text x="146" y="132" fill="#e2e8f0" font-size="7" text-anchor="middle">GND</text>
+                  <text x="164" y="132" fill="#e2e8f0" font-size="7" text-anchor="middle">DO</text>
+                  <text x="182" y="132" fill="#e2e8f0" font-size="7" text-anchor="middle">AO</text>
+
+                  <!-- Status Banner -->
+                  <rect x="20" y="150" width="175" height="42" rx="4" fill="#090d16" stroke="#334155" />
+                  <text x="107" y="166" fill="#94a3b8" font-size="9" font-weight="bold" text-anchor="middle">AO: 34 | DO: 25</text>
+                  <text x="107" y="184" fill="#4ade80" font-size="13" font-weight="bold" text-anchor="middle" id="svgRainStatusVal">DRY (HIGH 3.3V)</text>
+                </g>
+
+                <!-- SECTION 2B: WATER SENSOR (CONTACT DEPTH / S) [Top Middle] -->
+                <g id="comp-water-sensor" class="svg-comp" transform="translate(485, 30)">
+                  <rect width="210" height="210" rx="8" fill="#131d31" stroke="#2563eb" stroke-width="1.5" />
+                  <rect width="210" height="26" rx="8" fill="#1e3a8a" />
+                  <text x="105" y="17" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">2B. Water Sensor (Contact)</text>
+
+                  <!-- Resistive Contact Traces Board -->
+                  <rect x="25" y="45" width="75" height="90" rx="4" fill="#082f49" stroke="#0284c7" stroke-width="1.5" />
+                  <line x1="38" y1="55" x2="38" y2="125" stroke="#38bdf8" stroke-width="2" />
+                  <line x1="48" y1="55" x2="48" y2="125" stroke="#38bdf8" stroke-width="2" />
+                  <line x1="58" y1="55" x2="58" y2="125" stroke="#38bdf8" stroke-width="2" />
+                  <line x1="68" y1="55" x2="68" y2="125" stroke="#38bdf8" stroke-width="2" />
+                  <line x1="78" y1="55" x2="78" y2="125" stroke="#38bdf8" stroke-width="2" />
+                  <line x1="88" y1="55" x2="88" y2="125" stroke="#38bdf8" stroke-width="2" />
+
+                  <!-- Terminal Pins (S, +, -) -->
+                  <circle cx="130" cy="70" r="4" fill="#38bdf8" id="svgWaterPinS" />
+                  <text x="145" y="74" fill="#38bdf8" font-size="9" font-weight="bold">S (GPIO 35)</text>
+                  <circle cx="130" cy="95" r="4" fill="#ef4444" />
+                  <text x="145" y="99" fill="#f87171" font-size="9" font-weight="bold">+ (3.3V)</text>
+                  <circle cx="130" cy="120" r="4" fill="#64748b" />
+                  <text x="145" y="124" fill="#cbd5e1" font-size="9" font-weight="bold">- (GND)</text>
+
+                  <!-- Status Banner -->
+                  <rect x="20" y="150" width="170" height="42" rx="4" fill="#090d16" stroke="#334155" />
+                  <text x="105" y="166" fill="#94a3b8" font-size="9" font-weight="bold" text-anchor="middle">Signal/S (GPIO 35)</text>
+                  <text x="105" y="184" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle" id="svgWaterSensorVal">CONTACT DRY (0)</text>
+                </g>
+
+                <!-- SECTION 3: 5V RELAY MODULE (1 CHANNEL) [Top Middle-Right] -->
+                <g id="comp-relay-module" class="svg-comp" transform="translate(710, 30)">
+                  <!-- Border Card -->
+                  <rect width="210" height="210" rx="8" fill="#131d31" stroke="#2563eb" stroke-width="1.5" />
+                  <rect width="210" height="26" rx="8" fill="#1e3a8a" />
+                  <text x="105" y="17" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">3. Relay Module (1 Channel, 5V)</text>
+
+                  <!-- Blue Songle Relay Box -->
+                  <rect x="25" y="45" width="100" height="85" rx="4" fill="#1d4ed8" stroke="#3b82f6" stroke-width="1.5" id="svgRelayBody" />
+                  <text x="75" y="66" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">SONGLE</text>
+                  <text x="75" y="78" fill="#bfdbfe" font-size="7.5" text-anchor="middle">SRD-05VDC-SL-C</text>
+                  <text x="75" y="90" fill="#93c5fd" font-size="7" text-anchor="middle">10A 250VAC / 10A 30VDC</text>
+                  <circle cx="75" cy="112" r="4" fill="#334155" id="svgRelayLed" />
+                  <text x="75" y="122" fill="#cbd5e1" font-size="6.5" text-anchor="middle">ACTIVE LED</text>
+
+                  <!-- Control Pins Header (IN, GND, VCC) -->
+                  <rect x="15" y="145" width="80" height="20" rx="3" fill="#0f172a" />
+                  <text x="30" y="158" fill="#cbd5e1" font-size="8" text-anchor="middle">IN</text>
+                  <text x="55" y="158" fill="#cbd5e1" font-size="8" text-anchor="middle">GND</text>
+                  <text x="80" y="158" fill="#cbd5e1" font-size="8" text-anchor="middle">VCC</text>
+
+                  <!-- High Power Screw Terminals (NO, COM, NC) on right -->
+                  <rect x="145" y="55" width="50" height="70" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1" />
+                  <circle cx="160" cy="72" r="5" fill="#0f172a" stroke="#cbd5e1" stroke-width="1.5" />
+                  <text x="180" y="75" fill="#f87171" font-size="8" font-weight="bold">NO</text>
+
+                  <circle cx="160" cy="90" r="5" fill="#0f172a" stroke="#cbd5e1" stroke-width="1.5" />
+                  <text x="180" y="93" fill="#fbbf24" font-size="8" font-weight="bold">COM</text>
+
+                  <circle cx="160" cy="108" r="5" fill="#0f172a" stroke="#cbd5e1" stroke-width="1.5" />
+                  <text x="180" y="111" fill="#94a3b8" font-size="8">NC</text>
+
+                  <!-- Live Pump Status -->
+                  <rect x="15" y="172" width="180" height="28" rx="4" fill="#090d16" stroke="#334155" />
+                  <text x="105" y="190" fill="#94a3b8" font-size="10" font-weight="bold" text-anchor="middle" id="svgRelayStatusText">RELAY: OFF (STANDBY)</text>
+                </g>
+
+                <!-- SECTION 4: 12V DC WATER PUMP [Top Right] -->
+                <g id="comp-water-pump" class="svg-comp" transform="translate(945, 30)">
+                  <rect width="225" height="115" rx="8" fill="#131d31" stroke="#2563eb" stroke-width="1.5" />
+                  <rect width="225" height="26" rx="8" fill="#1e3a8a" />
+                  <text x="112" y="17" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">4. 12V DC Water Pump</text>
+
+                  <!-- Submersible Pump Body -->
+                  <rect x="40" y="42" width="75" height="60" rx="6" fill="#18181b" stroke="#3f3f46" stroke-width="2" id="svgPumpBody" />
+                  <!-- Spout / Nozzle -->
+                  <rect x="70" y="34" width="16" height="10" fill="#27272a" />
+                  <circle cx="78" cy="72" r="14" fill="#09090b" stroke="#52525b" stroke-width="1.5" />
+                  <path d="M 78 60 L 78 84 M 66 72 L 90 72" stroke="#71717a" stroke-width="2" id="svgImpellerCross" />
+                  <text x="78" y="96" fill="#a1a1aa" font-size="7" font-weight="bold" text-anchor="middle">12V SUBMERSIBLE</text>
+
+                  <!-- Pump State Badge -->
+                  <rect x="130" y="50" width="85" height="45" rx="4" fill="#090d16" stroke="#334155" />
+                  <text x="172" y="67" fill="#94a3b8" font-size="8" text-anchor="middle">PUMP STATE</text>
+                  <text x="172" y="85" fill="#9ca3af" font-size="12" font-weight="bold" text-anchor="middle" id="svgPumpBadgeText">OFF</text>
+                </g>
+
+                <!-- SECTION 5: 12V DC POWER SUPPLY [Middle Right] -->
+                <g id="comp-power-supply" class="svg-comp" transform="translate(945, 155)">
+                  <rect width="225" height="85" rx="8" fill="#131d31" stroke="#2563eb" stroke-width="1.5" />
+                  <rect width="225" height="24" rx="8" fill="#1e3a8a" />
+                  <text x="112" y="16" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">5. 12V DC Power Supply (2A+)</text>
+
+                  <!-- Wall Adapter Graphic -->
+                  <rect x="30" y="35" width="45" height="40" rx="4" fill="#18181b" stroke="#3f3f46" stroke-width="1.5" />
+                  <rect x="22" y="45" width="8" height="6" fill="#94a3b8" />
+                  <rect x="22" y="58" width="8" height="6" fill="#94a3b8" />
+                  <text x="52" y="58" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">12V</text>
+
+                  <!-- Terminals -->
+                  <circle cx="120" cy="55" r="4" fill="#ef4444" />
+                  <text x="135" y="58" fill="#f87171" font-size="10" font-weight="bold">+12V</text>
+
+                  <circle cx="170" cy="55" r="4" fill="#09090b" stroke="#64748b" stroke-width="1" />
+                  <text x="185" y="58" fill="#cbd5e1" font-size="10" font-weight="bold">GND (-)</text>
+                </g>
+
+                <!-- ============================================================= -->
+                <!-- BREADBOARD & ESP32 DevKit V1 SYSTEM [Center / Bottom]          -->
+                <!-- ============================================================= -->
+                <g id="breadboard-assembly" transform="translate(50, 260)">
+                  <!-- Breadboard Body -->
+                  <rect width="1100" height="470" rx="12" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3" />
+                  <!-- Center divider trough -->
+                  <rect x="20" y="235" width="1060" height="12" fill="#cbd5e1" />
+
+                  <!-- Power Rails (Top) -->
+                  <line x1="30" y1="20" x2="1070" y2="20" stroke="#ef4444" stroke-width="2.5" />
+                  <text x="20" y="24" fill="#ef4444" font-size="12" font-weight="bold">+</text>
+                  <line x1="30" y1="36" x2="1070" y2="36" stroke="#2563eb" stroke-width="2.5" />
+                  <text x="20" y="40" fill="#2563eb" font-size="12" font-weight="bold">-</text>
+
+                  <!-- Power Rails (Bottom) -->
+                  <line x1="30" y1="435" x2="1070" y2="435" stroke="#ef4444" stroke-width="2.5" />
+                  <text x="20" y="439" fill="#ef4444" font-size="12" font-weight="bold">+</text>
+                  <line x1="30" y1="450" x2="1070" y2="450" stroke="#2563eb" stroke-width="2.5" />
+                  <text x="20" y="454" fill="#2563eb" font-size="12" font-weight="bold">-</text>
+
+                  <!-- ESP32 DevKit V1 (ESP-WROOM-32) Mounted in center -->
+                  <g id="svgEsp32Board" transform="translate(420, 75)">
+                    <!-- Black PCB -->
+                    <rect width="260" height="330" rx="8" fill="#090d16" stroke="#334155" stroke-width="2.5" />
+                    <!-- Silver RF Shield Can -->
+                    <rect x="55" y="30" width="150" height="135" rx="6" fill="#94a3b8" stroke="#cbd5e1" stroke-width="2" />
+                    <text x="130" y="75" fill="#0f172a" font-size="13" font-weight="bold" text-anchor="middle">ESP-WROOM-32</text>
+                    <text x="130" y="95" fill="#1e293b" font-size="9" text-anchor="middle">Espressif Systems</text>
+                    <path d="M 115 115 A 15 15 0 0 1 145 115 M 120 122 A 10 10 0 0 1 140 122" fill="none" stroke="#0f172a" stroke-width="2" />
+
+                    <!-- USB Connector at bottom -->
+                    <rect x="105" y="305" width="50" height="28" rx="3" fill="#cbd5e1" stroke="#64748b" stroke-width="1.5" />
+
+                    <!-- Left Pin Header (Pins 1 - 15) -->
+                    <g transform="translate(10, 20)">
+                      <text x="18" y="15" fill="#fbbf24" font-size="9" font-weight="bold">3V3</text><circle cx="5" cy="12" r="3.5" fill="#e2e8f0" id="pinSvg3V3"/>
+                      <text x="18" y="35" fill="#94a3b8" font-size="9">EN</text><circle cx="5" cy="32" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="55" fill="#94a3b8" font-size="9">VP</text><circle cx="5" cy="52" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="75" fill="#94a3b8" font-size="9">VN</text><circle cx="5" cy="72" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="95" fill="#a855f7" font-size="9" font-weight="bold">GPIO 34 (AO)</text><circle cx="5" cy="92" r="4.5" fill="#c084fc" id="pinSvg34"/>
+                      <text x="18" y="115" fill="#38bdf8" font-size="9" font-weight="bold">GPIO 35 (S)</text><circle cx="5" cy="112" r="4.5" fill="#38bdf8" id="pinSvg35"/>
+                      <text x="18" y="135" fill="#94a3b8" font-size="9">32</text><circle cx="5" cy="132" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="155" fill="#94a3b8" font-size="9">33</text><circle cx="5" cy="152" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="175" fill="#a855f7" font-size="9" font-weight="bold">GPIO 25 (DO)</text><circle cx="5" cy="172" r="4.5" fill="#c084fc" id="pinSvg25"/>
+                      <text x="18" y="195" fill="#06b6d4" font-size="9" font-weight="bold">GPIO 26 (Buz)</text><circle cx="5" cy="192" r="4.5" fill="#22d3ee" id="pinSvg26"/>
+                      <text x="18" y="215" fill="#94a3b8" font-size="9">27</text><circle cx="5" cy="212" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="235" fill="#94a3b8" font-size="9">14</text><circle cx="5" cy="232" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="255" fill="#94a3b8" font-size="9">12</text><circle cx="5" cy="252" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="275" fill="#94a3b8" font-size="9">13</text><circle cx="5" cy="272" r="3.5" fill="#e2e8f0"/>
+                      <text x="18" y="295" fill="#38bdf8" font-size="9" font-weight="bold">GND</text><circle cx="5" cy="292" r="4" fill="#64748b" id="pinSvgGndL"/>
+                      <text x="18" y="315" fill="#ef4444" font-size="9" font-weight="bold">VIN (5V)</text><circle cx="5" cy="312" r="4" fill="#f87171" id="pinSvgVin"/>
+                    </g>
+
+                    <!-- Right Pin Header -->
+                    <g transform="translate(230, 20)">
+                      <text x="-25" y="15" fill="#38bdf8" font-size="9" font-weight="bold">GND</text><circle cx="15" cy="12" r="4" fill="#64748b" id="pinSvgGndR"/>
+                      <text x="-25" y="35" fill="#f97316" font-size="9" font-weight="bold">GPIO 23 (Relay)</text><circle cx="15" cy="32" r="4.5" fill="#fb923c" id="pinSvg23"/>
+                      <text x="-25" y="55" fill="#ef4444" font-size="9" font-weight="bold">GPIO 22 (Red)</text><circle cx="15" cy="52" r="4.5" fill="#f87171" id="pinSvg22"/>
+                      <text x="-20" y="75" fill="#94a3b8" font-size="9">TX0</text><circle cx="15" cy="72" r="3.5" fill="#e2e8f0"/>
+                      <text x="-20" y="95" fill="#94a3b8" font-size="9">RX0</text><circle cx="15" cy="92" r="3.5" fill="#e2e8f0"/>
+                      <text x="-25" y="115" fill="#eab308" font-size="9" font-weight="bold">GPIO 21 (Yel)</text><circle cx="15" cy="112" r="4.5" fill="#facc15" id="pinSvg21"/>
+                      <text x="-25" y="135" fill="#22c55e" font-size="9" font-weight="bold">GPIO 19 (Grn)</text><circle cx="15" cy="132" r="4.5" fill="#4ade80" id="pinSvg19"/>
+                      <text x="-25" y="155" fill="#38bdf8" font-size="9" font-weight="bold">GPIO 18 (Echo)</text><circle cx="15" cy="152" r="4.5" fill="#38bdf8" id="pinSvg18"/>
+                      <text x="-25" y="175" fill="#10b981" font-size="9" font-weight="bold">GPIO 5 (Trig)</text><circle cx="15" cy="172" r="4.5" fill="#34d399" id="pinSvg5"/>
+                      <text x="-20" y="195" fill="#94a3b8" font-size="9">17</text><circle cx="15" cy="192" r="3.5" fill="#e2e8f0"/>
+                      <text x="-20" y="215" fill="#94a3b8" font-size="9">16</text><circle cx="15" cy="212" r="3.5" fill="#e2e8f0"/>
+                      <text x="-20" y="235" fill="#94a3b8" font-size="9">4</text><circle cx="15" cy="232" r="3.5" fill="#e2e8f0"/>
+                      <text x="-20" y="255" fill="#94a3b8" font-size="9">2</text><circle cx="15" cy="252" r="3.5" fill="#e2e8f0"/>
+                      <text x="-20" y="275" fill="#94a3b8" font-size="9">15</text><circle cx="15" cy="272" r="3.5" fill="#e2e8f0"/>
+                      <text x="-25" y="295" fill="#38bdf8" font-size="9">GND</text><circle cx="15" cy="292" r="3.5" fill="#64748b"/>
+                    </g>
+                  </g>
+
+                  <!-- BREADBOARD ACTUATORS & COMPONENTS (LEFT SIDE) -->
+                  <!-- Green LED + 220Ω Resistor (GPIO 19) -->
+                  <g transform="translate(180, 160)">
+                    <circle cx="20" cy="20" r="14" fill="#15803d" stroke="#22c55e" stroke-width="2" id="svgLedGreen" filter="url(#glow-green)" />
+                    <text x="20" y="48" fill="#15803d" font-size="10" font-weight="bold" text-anchor="middle">GREEN LED</text>
+                    <text x="20" y="60" fill="#64748b" font-size="8" text-anchor="middle">GPIO 19</text>
+                    <!-- 220Ω Resistor -->
+                    <rect x="8" y="70" width="24" height="10" rx="3" fill="#d97706" stroke="#92400e" />
+                    <line x1="14" y1="70" x2="14" y2="80" stroke="#b91c1c" stroke-width="1.5" />
+                    <line x1="19" y1="70" x2="19" y2="80" stroke="#b91c1c" stroke-width="1.5" />
+                    <line x1="24" y1="70" x2="24" y2="80" stroke="#78350f" stroke-width="1.5" />
+                    <text x="20" y="93" fill="#64748b" font-size="8" text-anchor="middle">220Ω</text>
+                  </g>
+
+                  <!-- Yellow LED + 220Ω Resistor (GPIO 21) -->
+                  <g transform="translate(260, 160)">
+                    <circle cx="20" cy="20" r="14" fill="#a16207" stroke="#eab308" stroke-width="2" id="svgLedYellow" filter="url(#glow-yellow)" />
+                    <text x="20" y="48" fill="#ca8a04" font-size="10" font-weight="bold" text-anchor="middle">YELLOW LED</text>
+                    <text x="20" y="60" fill="#64748b" font-size="8" text-anchor="middle">GPIO 21</text>
+                    <!-- 220Ω Resistor -->
+                    <rect x="8" y="70" width="24" height="10" rx="3" fill="#d97706" stroke="#92400e" />
+                    <line x1="14" y1="70" x2="14" y2="80" stroke="#b91c1c" stroke-width="1.5" />
+                    <line x1="19" y1="70" x2="19" y2="80" stroke="#b91c1c" stroke-width="1.5" />
+                    <line x1="24" y1="70" x2="24" y2="80" stroke="#78350f" stroke-width="1.5" />
+                    <text x="20" y="93" fill="#64748b" font-size="8" text-anchor="middle">220Ω</text>
+                  </g>
+
+                  <!-- Red LED + 220Ω Resistor (GPIO 22) -->
+                  <g transform="translate(340, 160)">
+                    <circle cx="20" cy="20" r="14" fill="#991b1b" stroke="#ef4444" stroke-width="2" id="svgLedRed" filter="url(#glow-red)" />
+                    <text x="20" y="48" fill="#dc2626" font-size="10" font-weight="bold" text-anchor="middle">RED LED</text>
+                    <text x="20" y="60" fill="#64748b" font-size="8" text-anchor="middle">GPIO 22</text>
+                    <!-- 220Ω Resistor -->
+                    <rect x="8" y="70" width="24" height="10" rx="3" fill="#d97706" stroke="#92400e" />
+                    <line x1="14" y1="70" x2="14" y2="80" stroke="#b91c1c" stroke-width="1.5" />
+                    <line x1="19" y1="70" x2="19" y2="80" stroke="#b91c1c" stroke-width="1.5" />
+                    <line x1="24" y1="70" x2="24" y2="80" stroke="#78350f" stroke-width="1.5" />
+                    <text x="20" y="93" fill="#64748b" font-size="8" text-anchor="middle">220Ω</text>
+                  </g>
+
+                  <!-- Buzzer Module (Signal: GPIO 26 & GND) -->
+                  <g transform="translate(750, 200)">
+                    <circle cx="35" cy="35" r="32" fill="#18181b" stroke="#3f3f46" stroke-width="3" id="svgBuzzerBody" />
+                    <circle cx="35" cy="35" r="10" fill="#09090b" />
+                    <text x="35" y="82" fill="#e2e8f0" font-size="11" font-weight="bold" text-anchor="middle">BUZZER MODULE</text>
+                    <text x="35" y="96" fill="#64748b" font-size="8.5" text-anchor="middle">GPIO 26 & GND</text>
+                  </g>
+
+                  <!-- VOLTAGE DIVIDER CALLOUT BOX (For Ultrasonic ECHO) -->
+                  <g transform="translate(80, 50)">
+                    <rect width="250" height="90" rx="6" fill="#f8fafc" stroke="#9333ea" stroke-width="2" stroke-dasharray="4 2" />
+                    <text x="125" y="20" fill="#7e22ce" font-size="10" font-weight="bold" text-anchor="middle">Voltage Divider for ECHO (5V to 3.3V)</text>
+                    
+                    <!-- 1kΩ Resistor -->
+                    <text x="30" y="45" fill="#475569" font-size="8">From ECHO</text>
+                    <line x1="75" y1="42" x2="95" y2="42" stroke="#94a3b8" stroke-width="2" />
+                    <rect x="95" y="37" width="30" height="10" rx="2" fill="#d97706" />
+                    <text x="110" y="45" fill="#ffffff" font-size="7" text-anchor="middle">1kΩ</text>
+
+                    <!-- Center Junction -->
+                    <circle cx="140" cy="42" r="3" fill="#7e22ce" />
+                    <text x="140" y="58" fill="#7e22ce" font-size="8" font-weight="bold" text-anchor="middle">To GPIO 18 (~3.3V)</text>
+
+                    <!-- 2kΩ Resistor to GND -->
+                    <rect x="180" y="37" width="30" height="10" rx="2" fill="#d97706" />
+                    <text x="195" y="45" fill="#ffffff" font-size="7" text-anchor="middle">2kΩ</text>
+                    <line x1="140" y1="42" x2="180" y2="42" stroke="#94a3b8" stroke-width="2" />
+                    <line x1="210" y1="42" x2="230" y2="42" stroke="#94a3b8" stroke-width="2" />
+                    <text x="235" y="45" fill="#475569" font-size="8">GND</text>
+                  </g>
+                </g>
+
+                <!-- ============================================================= -->
+                <!-- EXACT JUMPER WIRE CONNECTIONS (SVG PATHS)                      -->
+                <!-- ============================================================= -->
+                <g id="wires-layer">
+                  <!-- Wire 1: Ultrasonic VCC -> ESP32 VIN (5V) [RED] -->
+                  <path d="M 168 150 L 168 250 L 410 250 L 410 390 L 425 390" fill="none" stroke="#ef4444" stroke-width="2.5" class="wire-pulse" />
+                  
+                  <!-- Wire 2: Ultrasonic GND -> Breadboard GND [BLACK] -->
+                  <path d="M 210 150 L 210 230 L 100 230 L 100 295" fill="none" stroke="#0f172a" stroke-width="2.5" />
+
+                  <!-- Wire 3: Ultrasonic TRIG -> ESP32 GPIO 5 [GREEN] -->
+                  <path d="M 182 150 L 182 240 L 700 240 L 700 435 L 665 435" fill="none" stroke="#10b981" stroke-width="2.5" class="wire-pulse" />
+
+                  <!-- Wire 4: Ultrasonic ECHO -> Voltage Divider 1kΩ -> ESP32 GPIO 18 [LIGHT BLUE] -->
+                  <path d="M 196 150 L 196 310 L 220 310" fill="none" stroke="#8b5cf6" stroke-width="2.5" />
+                  <path d="M 270 350 L 270 370 L 685 370 L 685 415 L 665 415" fill="none" stroke="#38bdf8" stroke-width="2.5" class="wire-pulse" />
+
+                  <!-- Wire 5: Rain Sensor VCC -> ESP32 3V3 [ORANGE/RED] -->
+                  <path d="M 390 150 L 390 230 L 415 230 L 415 292 L 425 292" fill="none" stroke="#f97316" stroke-width="2.5" />
+
+                  <!-- Wire 6: Rain Sensor GND -> GND Rail [BLACK] -->
+                  <path d="M 406 150 L 406 220 L 320 220 L 320 295" fill="none" stroke="#0f172a" stroke-width="2.5" />
+
+                  <!-- Wire 7A: Rain Sensor AO -> ESP32 GPIO 34 [PURPLE] -->
+                  <path d="M 442 150 L 442 245 L 420 245 L 420 352 L 425 352" fill="none" stroke="#a855f7" stroke-width="2.5" class="wire-pulse" />
+
+                  <!-- Wire 7B: Rain Sensor DO -> ESP32 GPIO 25 [PURPLE] -->
+                  <path d="M 424 150 L 424 255 L 415 255 L 415 432 L 425 432" fill="none" stroke="#8b5cf6" stroke-width="2.5" class="wire-pulse" />
+
+                  <!-- Wire 7C: Water Sensor Signal / S -> ESP32 GPIO 35 [CYAN] -->
+                  <path d="M 615 100 L 615 230 L 435 230 L 435 372 L 425 372" fill="none" stroke="#38bdf8" stroke-width="2.5" class="wire-pulse" />
+
+                  <!-- Wire 8: Relay VCC -> 5V VIN [RED] -->
+                  <path d="M 790 175 L 790 220 L 420 220 L 420 390" fill="none" stroke="#ef4444" stroke-width="2.5" />
+
+                  <!-- Wire 9: Relay GND -> GND [BLACK] -->
+                  <path d="M 765 175 L 765 240 L 700 240 L 700 295" fill="none" stroke="#0f172a" stroke-width="2.5" />
+
+                  <!-- Wire 10: Relay IN -> ESP32 GPIO 23 [BROWN] -->
+                  <path d="M 740 175 L 740 250 L 670 250 L 670 312 L 665 312" fill="none" stroke="#b45309" stroke-width="2.5" class="wire-pulse" />
+
+                  <!-- Wire 11: GPIO 19 -> Green LED [GREEN] -->
+                  <path d="M 665 395 L 685 395 L 685 245 L 205 245 L 205 195" fill="none" stroke="#22c55e" stroke-width="2.5" />
+
+                  <!-- Wire 12: GPIO 21 -> Yellow LED [YELLOW] -->
+                  <path d="M 665 375 L 680 375 L 680 255 L 285 255 L 285 195" fill="none" stroke="#eab308" stroke-width="2.5" />
+
+                  <!-- Wire 13: GPIO 22 -> Red LED [RED] -->
+                  <path d="M 665 332 L 675 332 L 675 265 L 365 265 L 365 195" fill="none" stroke="#ef4444" stroke-width="2.5" />
+
+                  <!-- Wire 14: GPIO 26 -> Buzzer Signal [CYAN] -->
+                  <path d="M 425 452 L 390 452 L 390 500 L 740 500 L 740 270 L 750 270" fill="none" stroke="#06b6d4" stroke-width="2.5" />
+
+                  <!-- HIGH POWER 12V CIRCUIT WIRES -->
+                  <!-- Wire 15: 12V Adapter (+) -> Relay COM [THICK RED] -->
+                  <path d="M 1065 210 L 1065 230 L 890 230 L 890 120 L 870 120" fill="none" stroke="#dc2626" stroke-width="3.5" />
+
+                  <!-- Wire 16: Relay NO -> Pump (+) [THICK RED SWITCHED] -->
+                  <path d="M 870 102 L 910 102 L 910 85 L 945 85" fill="none" stroke="#ef4444" stroke-width="3" id="wirePumpPos" stroke-dasharray="4 4" />
+
+                  <!-- Wire 17: 12V Adapter (-) -> Pump (-) [THICK BLACK] -->
+                  <path d="M 1115 210 L 1115 110 L 1020 110" fill="none" stroke="#09090b" stroke-width="3.5" />
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 2: PHYSICAL BENCH SETUP (Mini River Channel, Rain Pipe, Reservoir) -->
+        <div id="physical-bench-view" class="tab-content">
+          <div class="river-simulation-container">
+            <!-- Rain Particle Canvas Overlay -->
+            <canvas id="rainCanvas" class="rain-canvas"></canvas>
+
+            <!-- Ultrasonic Wave & Sensor Visualizer -->
+            <div class="sensor-mount">
+              <div class="sensor-unit" title="HC-SR04 Ultrasonic Transducers (Mounted at 26.0 cm)">
+                <div class="sensor-body">
+                  <div class="sensor-horn"></div>
+                  <span class="sensor-tag">HC-SR04 (26cm)</span>
+                </div>
+                <!-- Ultrasonic sound wave emitter animation -->
+                <div id="ultrasonicBeam" class="ultrasonic-beam">
+                  <div class="wave wave-1"></div>
+                  <div class="wave wave-2"></div>
+                  <div class="wave wave-3"></div>
+                </div>
+              </div>
+              <div class="distance-marker" id="distanceMarker">
+                <span class="distance-line"></span>
+                <span id="liveDistanceVal" class="distance-text">Sensor Dist: 21.0 cm</span>
+              </div>
+            </div>
+
+            <!-- River Channel Tank (Calibration: 26cm total height, 2.5cm deadzone, 23.5cm max depth) -->
+            <div class="river-tank" id="riverTank">
+              <!-- Threshold Lines -->
+              <div class="threshold-line danger-line" style="bottom: 85.1%;">
+                <span class="line-label">🔴 CRITICAL FLOOD (20.0 cm / 85.1%)</span>
+              </div>
+              <div class="threshold-line warning-line" style="bottom: 63.8%;">
+                <span class="line-label">🟡 WARNING LEVEL (15.0 cm Dual-Confirmed)</span>
+              </div>
+              <!-- Water Immersion Sensor physical placement marker at 15.0 cm -->
+              <div class="water-sensor-marker" style="bottom: 63.8%;" title="Water Immersion Sensor (GPIO 35) mounted at 15.0 cm">
+                <span class="marker-label">💧 WATER SENSOR PROBE @ 15.0 cm (GPIO 35)</span>
+              </div>
+              <div class="threshold-line safe-line" style="bottom: 0%;">
+                <span class="line-label">🟢 SAFE CHANNEL BED (0 cm)</span>
+              </div>
+
+              <!-- Animated Water Mass -->
+              <div id="waterMass" class="water-mass" style="height: 25%;">
+                <div class="water-surface">
+                  <div class="water-wave"></div>
+                  <div class="water-wave wave-back"></div>
+                </div>
+                <div class="water-depth-display">
+                  <span id="riverWaterDepth">5.0 cm</span>
+                  <span id="riverWaterPercent">(25.0%)</span>
+                </div>
+              </div>
+
+              <!-- 12V Submersible Water Pump Inside Channel -->
+              <div id="submersiblePump" class="submersible-pump" title="12V DC Submersible Pump">
+                <div class="pump-impeller" id="pumpImpeller"></div>
+                <div class="pump-body">
+                  <span class="pump-label">12V PUMP</span>
+                  <div class="pump-led" id="pumpLed"></div>
+                </div>
+                <!-- Discharge Hose -->
+                <div class="discharge-hose" id="dischargeHose">
+                  <div class="water-flow-stream" id="waterFlowStream"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Drainage Reservoir Tank -->
+            <div class="reservoir-tank" title="Water Reservoir (Pumping Target)">
+              <div class="reservoir-header">Water Reservoir</div>
+              <div class="reservoir-water" id="reservoirWater" style="height: 15%;"></div>
+            </div>
+
+            <!-- Channel Bank Overflow indicator -->
+            <div id="overflowAlert" class="overflow-banner hidden">
+              ⚠️ CRITICAL CHANNEL OVERFLOW BREACH!
+            </div>
+          </div>
+        </div>
+
+        <!-- View 3: EMBEDDED WIRING TABLE -->
+        <div id="wiring-table-view" class="tab-content">
+          <div class="wiring-table-wrapper">
+            <table class="wiring-table">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Component</th>
+                  <th>Module Pin</th>
+                  <th>ESP32 Pin / Power</th>
+                  <th>Additional Components</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td rowspan="4"><strong>Raindrop Sensor</strong></td><td>AO</td><td>GPIO 34</td><td>-</td><td>Analog rain intensity (0-4095)</td></tr>
+                <tr><td>2</td><td>DO (optional)</td><td>GPIO 25</td><td>-</td><td>Digital rain detection (active LOW)</td></tr>
+                <tr><td>3</td><td>VCC</td><td>3.3 V</td><td>-</td><td>Sensor power (3.3V)</td></tr>
+                <tr><td>4</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
+
+                <tr><td>5</td><td rowspan="3"><strong>Water Sensor</strong></td><td>Signal / S</td><td>GPIO 35</td><td>-</td><td>Analog water contact/depth (0-4095)</td></tr>
+                <tr><td>6</td><td>VCC</td><td>3.3 V*</td><td>-</td><td>Sensor power (*safe for 3.3V GPIO)</td></tr>
+                <tr><td>7</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
+
+                <tr><td>8</td><td rowspan="4"><strong>Ultrasonic Sensor</strong></td><td>TRIG</td><td>GPIO 5</td><td>-</td><td>Ultrasonic trigger pulse</td></tr>
+                <tr><td>9</td><td>ECHO</td><td>GPIO 18</td><td>1kΩ + 2kΩ voltage divider</td><td>Echo pulse (5V to 3.3V safe)</td></tr>
+                <tr><td>10</td><td>VCC</td><td>5V (VIN)</td><td>-</td><td>Sensor power</td></tr>
+                <tr><td>11</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
+
+                <tr><td>12</td><td rowspan="3"><strong>Buzzer Module</strong></td><td>Signal / IN</td><td>GPIO 26</td><td>-</td><td>Acoustic siren warning alarm</td></tr>
+                <tr><td>13</td><td>VCC</td><td>3.3V / 5V</td><td>-</td><td>Module power</td></tr>
+                <tr><td>14</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
+
+                <tr><td>15</td><td><strong>Green LED</strong></td><td>Anode (+)</td><td>GPIO 19</td><td>220–330 Ω resistor</td><td>Low risk indicator (Safe / Normal)</td></tr>
+                <tr><td>16</td><td><strong>Yellow LED</strong></td><td>Anode (+)</td><td>GPIO 21</td><td>220–330 Ω resistor</td><td>Medium risk indicator (Watch / Warning)</td></tr>
+                <tr><td>17</td><td><strong>Red LED</strong></td><td>Anode (+)</td><td>GPIO 22</td><td>220–330 Ω resistor</td><td>High risk indicator (Critical Alert)</td></tr>
+                <tr><td>18</td><td><strong>All Three LEDs</strong></td><td>Cathode (−)</td><td>GND</td><td>Through resistors</td><td>Common ground return</td></tr>
+
+                <tr><td>19</td><td rowspan="3"><strong>Relay Module</strong></td><td>IN</td><td>GPIO 23</td><td>-</td><td>Pump control signal (active LOW)</td></tr>
+                <tr><td>20</td><td>VCC</td><td>5V (VIN)</td><td>-</td><td>Relay coil power</td></tr>
+                <tr><td>21</td><td>GND</td><td>ESP32 GND</td><td>-</td><td>Common ground</td></tr>
+
+                <tr><td>22</td><td rowspan="4"><strong>Relay &amp; Water Pump Wiring</strong></td><td>COM</td><td>Power Supply (+)</td><td>-</td><td>Positive supply for pump (e.g. 12V +)</td></tr>
+                <tr><td>23</td><td>NO</td><td>Pump (+)</td><td>-</td><td>Pump positive terminal</td></tr>
+                <tr><td>24</td><td>Pump (-)</td><td>Power Supply (-)</td><td>-</td><td>Negative terminal of rated power supply</td></tr>
+                <tr><td>25</td><td>NC</td><td>Unconnected</td><td>-</td><td>Leave unconnected</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Quick Scenario Action Bar -->
+        <div class="scenario-bar">
+          <span class="bar-title">Quick Scenarios:</span>
+          <button class="btn btn-pill" id="btnScenarioClear">☀️ Dry Sunny</button>
+          <button class="btn btn-pill" id="btnScenarioRain">🌧️ Steady Rain</button>
+          <button class="btn btn-pill" id="btnScenarioFlashFlood">⚡ Flash Flood Influx</button>
+          <button class="btn btn-pill" id="btnScenarioDrainage">🛡️ Emergency Pumping</button>
+        </div>
+
+        <!-- Live Raw Physical Sensor Hardware Diagnostics (Verified ADC & Timers) -->
+        <div class="card diag-card" id="diagCard">
+          <div class="diag-header">
+            <div class="diag-title">
+              <span>🔬</span> Live Sensor Diagnostics (Raw ADC &amp; Timings)
+            </div>
+            <span class="diag-rate-badge" id="diagLoopBadge">ESP32: 115200 BAUD &bull; 1.0s</span>
+          </div>
+
+          <div class="diag-grid">
+            <!-- Sensor 1: Ultrasonic Echo Pulse -->
+            <div class="diag-item">
+              <span class="diag-label">Ultrasonic Echo Timing</span>
+              <div class="diag-val-row">
+                <span class="diag-val" id="diagEchoUs">--</span>
+                <span class="diag-sub">&mu;s</span>
+              </div>
+              <span class="diag-sub" id="diagEchoCalc">&rarr; Air Dist: -- cm</span>
+              <span class="diag-pin-tag">TRIG: GPIO 5 &bull; ECHO: GPIO 18</span>
+            </div>
+
+            <!-- Sensor 2: Raindrop Sensor -->
+            <div class="diag-item">
+              <span class="diag-label">Raindrop Plate ADC &amp; DO</span>
+              <div class="diag-val-row">
+                <span class="diag-val" id="diagRainAdc">--</span>
+                <span class="diag-sub">/ 4095</span>
+              </div>
+              <span class="diag-sub" id="diagRainVolt">Volt: -- V &bull; DO: --</span>
+              <span class="diag-pin-tag">AO: GPIO 34 &bull; DO: GPIO 25</span>
+            </div>
+
+            <!-- Sensor 3: Water Immersion Sensor -->
+            <div class="diag-item">
+              <span class="diag-label">Water Sensor (S) Immersion</span>
+              <div class="diag-val-row">
+                <span class="diag-val" id="diagWaterAdc">--</span>
+                <span class="diag-sub">/ 4095</span>
+              </div>
+              <span class="diag-sub" id="diagWaterVolt">Volt: -- V &bull; State: --</span>
+              <span class="diag-pin-tag">Signal S: GPIO 35 (ADC1)</span>
+            </div>
+
+            <!-- Sensor 4: Actuator Hardware States -->
+            <div class="diag-item">
+              <span class="diag-label">Relay &amp; Actuators Pin Registers</span>
+              <div class="diag-val-row">
+                <span class="diag-val" id="diagRelayState">--</span>
+                <span class="diag-sub" id="diagPumpState">(Pump: --)</span>
+              </div>
+              <span class="diag-sub" id="diagLedState">LEDs: G:-- Y:-- R:-- &bull; Buz:--</span>
+              <span class="diag-pin-tag">Relay: 23 &bull; Buzzer: 26 &bull; LEDs: 19,21,22</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simulation Interactive Controls (Virtual Offline Testing) -->
+        <div class="card controls-card" id="simControlsCard">
+          <div class="sim-disabled-notice hidden" id="simDisabledNotice">
+            ℹ️ <strong>Real Measurements Mode:</strong> Environmental sliders are paused because telemetry is read exclusively from physical ESP32 hardware pins. Switch to "Virtual Simulator" at the top to test slider animations offline.
+          </div>
+          <div class="card-title">🧪 Virtual Simulator Environmental Overrides (Offline Only)</div>
+
+          <!-- Rain Intensity Selector -->
+          <div class="control-group">
+            <div class="control-header">
+              <label>Rainfall Intensity</label>
+              <span class="control-val" id="rainIntensityLabel">Dry (0 mm/h)</span>
+            </div>
+            <div class="rain-buttons-group">
+              <button class="btn btn-rain active" data-rain="0">Dry</button>
+              <button class="btn btn-rain" data-rain="1">Light</button>
+              <button class="btn btn-rain" data-rain="2">Heavy</button>
+              <button class="btn btn-rain" data-rain="3">Torrential</button>
+            </div>
+          </div>
+
+          <!-- Upstream River Inflow Slider -->
+          <div class="control-group">
+            <div class="control-header">
+              <label for="inflowSlider">Upstream River Inflow</label>
+              <span class="control-val" id="inflowValueLabel">0.0 cm/s</span>
+            </div>
+            <input type="range" id="inflowSlider" min="0" max="1.5" step="0.05" value="0.0" class="slider">
+          </div>
+
+          <!-- Direct Manual Water Level Override -->
+          <div class="control-group">
+            <div class="control-header">
+              <label for="manualWaterSlider">Manual Water Level Override</label>
+              <span class="control-val" id="manualWaterLabel">5.0 cm (25%)</span>
+            </div>
+            <input type="range" id="manualWaterSlider" min="0" max="23.5" step="0.1" value="5.0" class="slider">
+            <div class="slider-ticks">
+              <span>0 cm (Empty)</span>
+              <span>15 cm (Warning)</span>
+              <span>20 cm (Critical)</span>
+              <span>23.5 cm (Full)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Live Telemetry, Controls, and Predictive Engine -->
+      <section class="controls-panel">
+        <!-- Live Telemetry Digital LCD Cards -->
+        <div class="card metrics-card">
+          <div class="card-title">Live Sensor Telemetry</div>
+          <div class="metrics-grid">
+            <!-- Metric 1: Water Depth -->
+            <div class="metric-item">
+              <span class="metric-label">River Water Depth</span>
+              <div class="metric-value-wrap">
+                <span class="metric-value" id="valDepth">5.0</span>
+                <span class="metric-unit">cm</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill fill-safe" id="depthProgressBar" style="width: 25%;"></div>
+              </div>
+            </div>
+
+            <!-- Metric 2: Ultrasonic Distance -->
+            <div class="metric-item">
+              <span class="metric-label">HC-SR04 Air Distance</span>
+              <div class="metric-value-wrap">
+                <span class="metric-value" id="valDistance">21.0</span>
+                <span class="metric-unit">cm</span>
+              </div>
+              <span class="metric-hint">Target to Transducer (26cm Mount)</span>
+            </div>
+
+            <!-- Metric 3: Water Immersion Sensor (GPIO 35) -->
+            <div class="metric-item">
+              <span class="metric-label">Water Sensor (GPIO 35 @ 15cm)</span>
+              <div class="metric-value-wrap">
+                <span class="metric-badge water-sensor-badge-dry" id="valWaterBadge">DRY (SAFE)</span>
+              </div>
+              <span class="metric-hint">Raw: <strong id="valWaterRaw">0</strong> | Volt: <strong id="valWaterVolt">0.00V</strong></span>
+            </div>
+
+            <!-- Metric 4: Rain Detection -->
+            <div class="metric-item">
+              <span class="metric-label">Rain Drop Status (GPIO 34/25)</span>
+              <div class="metric-value-wrap">
+                <span class="metric-badge rain-badge-no" id="valRainBadge">NO RAIN</span>
+              </div>
+              <span class="metric-hint">AO: <strong id="valRainAo">4095</strong> | DO: <strong id="valRainLogic">HIGH</strong></span>
+            </div>
+
+            <!-- Metric 5: Rate of Rise (Prediction Metric) -->
+            <div class="metric-item">
+              <span class="metric-label">Rate of Rise (&Delta;H/&Delta;t)</span>
+              <div class="metric-value-wrap">
+                <span class="metric-value" id="valRate">+0.00</span>
+                <span class="metric-unit">cm/min</span>
+              </div>
+              <span class="trend-indicator" id="trendIndicator">Stable ➡️</span>
+            </div>
+
+            <!-- Metric 6: Flood Prediction Estimate -->
+            <div class="metric-item col-span-2 prediction-box">
+              <div class="pred-header">
+                <span class="pred-title">⏱️ Early Warning Runoff Prediction</span>
+                <span class="pred-tag" id="predStatusTag">LOW RISK</span>
+              </div>
+              <div class="pred-body">
+                <div class="pred-time" id="valEstOverflow">Channel Safe</div>
+                <div class="pred-desc" id="valEstDesc">No impending overflow risk detected at current rate.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DUAL-CONFIRMATION DECISION MATRIX (HARDWARE EVALUATOR PANEL) -->
+        <div class="card evaluator-card" id="evaluatorCard">
+          <div class="card-header-row">
+            <div class="card-title">
+              <span class="card-title-icon">🎯</span> Dual-Confirmation Decision Matrix (Hardware Evaluator)
+            </div>
+            <span class="evaluator-badge" id="evaluatorStateBadge">SAFE / NORMAL</span>
+          </div>
+          <div class="evaluator-grid">
+            <!-- Rule 1: Warning Criteria -->
+            <div class="eval-rule-box rule-warn" id="evalRuleWarn">
+              <div class="eval-rule-header">
+                <span class="eval-rule-pill pill-warn">🟡 WARNING LEVEL (15.0 cm)</span>
+                <span class="eval-rule-status" id="evalWarnResult">SAFE (0/2)</span>
+              </div>
+              <div class="eval-conditions">
+                <div class="eval-cond" id="condDepth15">
+                  <div class="cond-title-wrap">
+                    <span class="cond-icon" id="iconDepth15">⚪</span>
+                    <span class="cond-text">1. Water Depth &ge; 15.0 cm</span>
+                  </div>
+                  <strong class="cond-val" id="valCondDepth15">5.0 cm (NO)</strong>
+                </div>
+                <div class="eval-cond" id="condWaterWet">
+                  <div class="cond-title-wrap">
+                    <span class="cond-icon" id="iconWaterWet">⚪</span>
+                    <span class="cond-text">2. Water Sensor @ 15cm WET</span>
+                  </div>
+                  <strong class="cond-val" id="valCondWaterWet">DRY (NO)</strong>
+                </div>
+              </div>
+              <div class="eval-rule-footer">Both conditions required to trigger Warning &amp; Yellow LED (GPIO 21).</div>
+            </div>
+
+            <!-- Rule 2: Critical Flood Criteria -->
+            <div class="eval-rule-box rule-danger" id="evalRuleDanger">
+              <div class="eval-rule-header">
+                <span class="eval-rule-pill pill-danger">🔴 CRITICAL FLOOD (20.0 cm)</span>
+                <span class="eval-rule-status" id="evalDangerResult">SAFE</span>
+              </div>
+              <div class="eval-conditions">
+                <div class="eval-cond" id="condDepth20">
+                  <div class="cond-title-wrap">
+                    <span class="cond-icon" id="iconDepth20">⚪</span>
+                    <span class="cond-text">1. Water Depth &ge; 20.0 cm</span>
+                  </div>
+                  <strong class="cond-val" id="valCondDepth20">5.0 cm (NO)</strong>
+                </div>
+              </div>
+              <div class="eval-rule-footer">Direct threshold triggers Red LED (GPIO 22) + Audio Siren (GPIO 26).</div>
+            </div>
+          </div>
+
+          <!-- Physical Container Calibration Specs -->
+          <div class="eval-calib-bar">
+            <div class="calib-item"><span>Bucket Height:</span> <strong>26.0 cm</strong></div>
+            <div class="calib-item"><span>HC-SR04 Dead Zone:</span> <strong>2.5 cm</strong></div>
+            <div class="calib-item"><span>Max Depth Capacity:</span> <strong>23.5 cm</strong></div>
+            <div class="calib-item"><span>Water Sensor Probe:</span> <strong>15.0 cm (GPIO 35)</strong></div>
+          </div>
+        </div>
+
+        <!-- REAL PHYSICAL ESP32 HARDWARE CONTROLS (DIRECT USB ACTUATION) -->
+        <div class="card real-hardware-card" id="realHardwareCard">
+          <div class="card-header-row">
+            <div class="card-title">
+              <span class="card-title-icon">⚡</span> Actuator &amp; Hardware Controls
+            </div>
+            <span class="badge-chip-status" id="hwSyncState">COM PORT STANDBY</span>
+          </div>
+
+          <!-- Real Pump Manual Toggle Button -->
+          <div class="real-pump-panel">
+            <div class="real-pump-info">
+              <div class="pump-title-group">
+                <span class="real-pump-title">💧 12V Rainmaker Pump</span>
+                <span class="badge-chip">Relay GPIO 23</span>
+              </div>
+              <span class="real-pump-sub" id="realPumpPinState">Relay Pin 23: <strong>HIGH (3.3V / Standby OFF)</strong></span>
+            </div>
+
+            <!-- Tactile Segmented Dual Controller -->
+            <div class="pump-segmented-group">
+              <button class="btn btn-pump-action btn-pump-off" id="btnPumpOff" title="Force Pump Standby (Relay Open)">
+                <span>🛑</span> Standby (OFF)
+              </button>
+              <button class="btn btn-pump-action btn-pump-on" id="btnPumpOn" title="Energize Pump (Relay Closed)">
+                <span>⛲</span> Run Pump (ON)
+              </button>
+            </div>
+
+            <!-- Pump Relay Status Display -->
+            <div class="pump-status-indicator" id="pumpStatusIndicator">
+              <span class="pump-dot" id="pumpDot"></span>
+              <span id="pumpStatusText">Real Pump Standby (Relay Open)</span>
+            </div>
+
+            <!-- Invert Relay Logic Button if relay is Active HIGH or wired to NC -->
+            <div class="relay-invert-row">
+              <span class="relay-invert-hint">Signal inverted or wired to NC?</span>
+              <button class="btn btn-xs btn-invert" id="btnInvertRelay" title="Flip Active-LOW to Active-HIGH in firmware">
+                🔄 Invert Relay Logic
+              </button>
+            </div>
+          </div>
+
+          <!-- Real Physical Hardware Diagnostics & Overrides -->
+          <div class="hw-action-buttons">
+            <button class="btn btn-mode" id="btnHwTestLeds" title="Flash Green, Yellow, Red LEDs on physical ESP32">
+              💡 Test Real LEDs
+            </button>
+            <button class="btn btn-mode" id="btnHwTestBuzzer" title="Beep Buzzer on physical ESP32">
+              🔔 Test Real Buzzer
+            </button>
+          </div>
+          <div class="hw-connection-note" id="hwNoticeText">
+            <span>Connect ESP32 via USB and click <strong>"⚡ Connect ESP32"</strong> in the header to actuate physical pins.</span>
+          </div>
+        </div>
+
+        <!-- Real-Time Telemetry Graph -->
+        <div class="card graph-card">
+          <div class="card-title">
+            <span>Water Level & Pump Telemetry (Real-Time)</span>
+            <span class="live-pulse"></span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="telemetryChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Virtual ESP32 Serial Monitor -->
+        <div class="card serial-card">
+          <div class="serial-header">
+            <div class="serial-title">
+              <span class="terminal-dot red"></span>
+              <span class="terminal-dot yellow"></span>
+              <span class="terminal-dot green"></span>
+              <span>ESP32 Serial Monitor @ 115200 Baud</span>
+            </div>
+            <div class="serial-actions">
+              <button id="btnClearSerial" class="btn btn-xs">Clear</button>
+              <button id="btnAutoscroll" class="btn btn-xs active">Auto-scroll</button>
+            </div>
+          </div>
+          <div class="serial-terminal" id="serialTerminal">
+            <div class="serial-line info">[SYSTEM] ESP32 DevKit V1 Initialized...</div>
+            <div class="serial-line info">[SYSTEM] HC-SR04 Ultrasonic Sensor on GPIO 5 (TRIG) &amp; GPIO 18 (ECHO). Bucket: 26cm, Max: 23.5cm.</div>
+            <div class="serial-line info">[SYSTEM] Rain Drop Sensor connected to GPIO 34 (AO) &amp; GPIO 25 (DO).</div>
+            <div class="serial-line info">[SYSTEM] Contact Water Sensor mounted at 15cm on GPIO 35 (Dual-Confirmation Warning).</div>
+            <div class="serial-line info">[SYSTEM] 12V Submersible Pump Relay configured on GPIO 23.</div>
+            <div class="serial-line info">[SYSTEM] Web Serial API ready. Click "⚡ Connect Real ESP32" to stream live hardware.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Schematic & Wiring Reference Modal -->
+    <div id="schematicModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>ESP32 Complete Connection Diagram & Table</h2>
+          <button id="closeModalBtn" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <table class="wiring-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Component</th>
+                <th>Module Pin</th>
+                <th>ESP32 Pin / Power</th>
+                <th>Additional Components</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td rowspan="4"><strong>Raindrop Sensor</strong></td><td>AO</td><td>GPIO 34</td><td>-</td><td>Analog rain intensity (0-4095 ADC1)</td></tr>
+              <tr><td>2</td><td>DO (optional)</td><td>GPIO 25</td><td>-</td><td>Digital rain detection (active LOW)</td></tr>
+              <tr><td>3</td><td>VCC</td><td>3.3 V</td><td>-</td><td>Sensor power (3.3V)</td></tr>
+              <tr><td>4</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
+
+              <tr><td>5</td><td rowspan="3"><strong>Water Sensor</strong></td><td>Signal / S</td><td>GPIO 35</td><td>-</td><td>Analog water depth / immersion (0-4095 ADC1)</td></tr>
+              <tr><td>6</td><td>VCC</td><td>3.3 V*</td><td>-</td><td>Sensor power (*safe for 3.3V GPIO)</td></tr>
+              <tr><td>7</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
+
+              <tr><td>8</td><td rowspan="4"><strong>Ultrasonic Sensor</strong></td><td>TRIG</td><td>GPIO 5</td><td>-</td><td>Ultrasonic trigger pulse</td></tr>
+              <tr><td>9</td><td>ECHO</td><td>GPIO 18</td><td>1k&Omega; + 2k&Omega; voltage divider</td><td>Echo pulse (level shifted 5V &rarr; ~3.3V)</td></tr>
+              <tr><td>10</td><td>VCC</td><td>Sensor Specs</td><td>-</td><td>Module power (5V / VIN)</td></tr>
+              <tr><td>11</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
+
+              <tr><td>12</td><td rowspan="3"><strong>Buzzer Module</strong></td><td>Signal / IN</td><td>GPIO 26</td><td>-</td><td>Warning audio siren alarm</td></tr>
+              <tr><td>13</td><td>VCC</td><td>Module Specs</td><td>-</td><td>Module power (3.3V / 5V)</td></tr>
+              <tr><td>14</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
+
+              <tr><td>15</td><td><strong>Green LED</strong></td><td>Anode (+)</td><td>GPIO 19</td><td>220–330 &Omega; Resistor</td><td>Low Risk Indicator (Safe / Normal)</td></tr>
+              <tr><td>16</td><td><strong>Yellow LED</strong></td><td>Anode (+)</td><td>GPIO 21</td><td>220–330 &Omega; Resistor</td><td>Medium Risk Indicator (Watch / Alert)</td></tr>
+              <tr><td>17</td><td><strong>Red LED</strong></td><td>Anode (+)</td><td>GPIO 22</td><td>220–330 &Omega; Resistor</td><td>High Risk Indicator (Flood Danger)</td></tr>
+              <tr><td>18</td><td><strong>All Three LEDs</strong></td><td>Cathode (−)</td><td>GND</td><td>Through respective resistors</td><td>Common return</td></tr>
+
+              <tr><td>19</td><td rowspan="3"><strong>Relay Module</strong></td><td>IN</td><td>GPIO 23</td><td>-</td><td>Pump control signal (Active LOW)</td></tr>
+              <tr><td>20</td><td>VCC</td><td>Module Specs</td><td>-</td><td>Relay coil power</td></tr>
+              <tr><td>21</td><td>GND</td><td>ESP32 GND</td><td>-</td><td>Common ground</td></tr>
+
+              <tr><td>22</td><td rowspan="4"><strong>Relay &amp; Water Pump Wiring</strong></td><td>COM</td><td>Power Supply (+)</td><td>-</td><td>Positive supply for the pump (e.g. 12V +)</td></tr>
+              <tr><td>23</td><td>NO</td><td>Pump (+)</td><td>-</td><td>Pump positive terminal (Red wire)</td></tr>
+              <tr><td>24</td><td>Pump (-)</td><td>Power Supply (-)</td><td>-</td><td>Negative terminal of pump power supply</td></tr>
+              <tr><td>25</td><td>NC</td><td>Unconnected</td><td>-</td><td>Leave unconnected</td></tr>
+            </tbody>
+          </table>
+          <div class="modal-footer-notes">
+            <p><strong>Note on Ultrasonic Echo (HC-SR04):</strong> The HC-SR04 operates at 5V. The 1k&Omega; and 2k&Omega; resistor voltage divider protects ESP32 GPIO 18 by dividing 5V down to 3.33V (Bucket: 26cm, Deadzone: 2.5cm, Max: 23.5cm).</p>
+            <p><strong>Dual-Confirmation Warning (15 cm):</strong> The water immersion sensor is mounted at 15.0 cm on GPIO 35. Warning status requires BOTH ultrasonic depth &ge; 15.0 cm and water sensor wet, preventing false alarms from surface ripples.</p>
+            <p><strong>Note on 12V Pump:</strong> The pump is powered entirely by the external 12V 2A power supply through the relay contacts (COM & NO), completely isolated from the ESP32.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="simulator.js"></script>
+</body>
+</html>
