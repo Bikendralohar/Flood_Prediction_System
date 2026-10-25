@@ -877,6 +877,30 @@
           </div>
         </div>
 
+        <!-- ESP32 Serial Monitor @ 115200 Baud -->
+        <div class="card serial-card">
+          <div class="serial-header">
+            <div class="serial-title">
+              <span class="terminal-dot red"></span>
+              <span class="terminal-dot yellow"></span>
+              <span class="terminal-dot green"></span>
+              <span>ESP32 Serial Monitor @ 115200 Baud</span>
+            </div>
+            <div class="serial-actions">
+              <button id="btnClearSerial" class="btn btn-xs">Clear</button>
+              <button id="btnAutoscroll" class="btn btn-xs active">Auto-scroll</button>
+            </div>
+          </div>
+          <div class="serial-terminal" id="serialTerminal">
+            <div class="serial-line info">[SYSTEM] ESP32 DevKit V1 Initialized...</div>
+            <div class="serial-line info">[SYSTEM] HC-SR04 Ultrasonic Sensor on GPIO 5 (TRIG) &amp; GPIO 18 (ECHO). Bucket: 26cm, Max: 23.5cm.</div>
+            <div class="serial-line info">[SYSTEM] Rain Drop Sensor connected to GPIO 34 (AO) &amp; GPIO 25 (DO).</div>
+            <div class="serial-line info">[SYSTEM] Contact Water Sensor mounted at 15cm on GPIO 35 (Dual-Confirmation Warning).</div>
+            <div class="serial-line info">[SYSTEM] 12V Submersible Pump Relay configured on GPIO 23.</div>
+            <div class="serial-line info">[SYSTEM] Web Serial API ready. Click "⚡ Connect Real ESP32" to stream live hardware.</div>
+          </div>
+        </div>
+
         <!-- Simulation Interactive Controls (Virtual Offline Testing Only) -->
         <div class="card controls-card hidden" id="simControlsCard">
           <div class="sim-disabled-notice hidden" id="simDisabledNotice">
@@ -1056,6 +1080,17 @@
           </div>
         </div>
 
+        <!-- Real-Time Telemetry Graph -->
+        <div class="card graph-card">
+          <div class="card-title">
+            <span>Water Level & Pump Telemetry (Real-Time)</span>
+            <span class="live-pulse"></span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="telemetryChart"></canvas>
+          </div>
+        </div>
+
         <!-- REAL PHYSICAL ESP32 HARDWARE CONTROLS (DIRECT USB ACTUATION) -->
         <div class="card real-hardware-card" id="realHardwareCard">
           <div class="card-header-row">
@@ -1103,41 +1138,6 @@
           </div>
           <div class="hw-connection-note" id="hwNoticeText">
             <span>Connect ESP32 via USB and click <strong>"⚡ Connect ESP32"</strong> in the header to actuate physical pins.</span>
-          </div>
-        </div>
-
-        <!-- Real-Time Telemetry Graph -->
-        <div class="card graph-card">
-          <div class="card-title">
-            <span>Water Level & Pump Telemetry (Real-Time)</span>
-            <span class="live-pulse"></span>
-          </div>
-          <div class="chart-wrapper">
-            <canvas id="telemetryChart"></canvas>
-          </div>
-        </div>
-
-        <!-- Virtual ESP32 Serial Monitor -->
-        <div class="card serial-card">
-          <div class="serial-header">
-            <div class="serial-title">
-              <span class="terminal-dot red"></span>
-              <span class="terminal-dot yellow"></span>
-              <span class="terminal-dot green"></span>
-              <span>ESP32 Serial Monitor @ 115200 Baud</span>
-            </div>
-            <div class="serial-actions">
-              <button id="btnClearSerial" class="btn btn-xs">Clear</button>
-              <button id="btnAutoscroll" class="btn btn-xs active">Auto-scroll</button>
-            </div>
-          </div>
-          <div class="serial-terminal" id="serialTerminal">
-            <div class="serial-line info">[SYSTEM] ESP32 DevKit V1 Initialized...</div>
-            <div class="serial-line info">[SYSTEM] HC-SR04 Ultrasonic Sensor on GPIO 5 (TRIG) &amp; GPIO 18 (ECHO). Bucket: 26cm, Max: 23.5cm.</div>
-            <div class="serial-line info">[SYSTEM] Rain Drop Sensor connected to GPIO 34 (AO) &amp; GPIO 25 (DO).</div>
-            <div class="serial-line info">[SYSTEM] Contact Water Sensor mounted at 15cm on GPIO 35 (Dual-Confirmation Warning).</div>
-            <div class="serial-line info">[SYSTEM] 12V Submersible Pump Relay configured on GPIO 23.</div>
-            <div class="serial-line info">[SYSTEM] Web Serial API ready. Click "⚡ Connect Real ESP32" to stream live hardware.</div>
           </div>
         </div>
       </section>
