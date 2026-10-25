@@ -167,7 +167,8 @@
   const realPumpPinState = document.getElementById('realPumpPinState');
   let userManualPumpTimestamp = 0;
 
-  // Scenario buttons
+  // Scenario bar & buttons
+  const scenarioBar = document.getElementById('scenarioBar');
   const btnScenarioClear = document.getElementById('btnScenarioClear');
   const btnScenarioRain = document.getElementById('btnScenarioRain');
   const btnScenarioFlashFlood = document.getElementById('btnScenarioFlashFlood');
@@ -1056,11 +1057,13 @@
       }
       if (simControlsCard) simControlsCard.classList.add('sim-controls-disabled');
       if (simDisabledNotice) simDisabledNotice.classList.remove('hidden');
+      if (scenarioBar) scenarioBar.classList.add('hidden');
     } else {
       // Virtual Simulator mode
       if (hardwareLiveBanner) hardwareLiveBanner.classList.add('banner-hidden');
       if (simControlsCard) simControlsCard.classList.remove('sim-controls-disabled');
       if (simDisabledNotice) simDisabledNotice.classList.add('hidden');
+      if (scenarioBar) scenarioBar.classList.remove('hidden');
       if (hardwareStatusBadge) {
         hardwareStatusBadge.className = 'status-badge status-sim';
         if (hardwareStatusText) hardwareStatusText.textContent = 'SIMULATOR';
