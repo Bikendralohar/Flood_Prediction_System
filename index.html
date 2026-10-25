@@ -1090,43 +1090,6 @@
             <canvas id="telemetryChart"></canvas>
           </div>
         </div>
-
-        <!-- REAL PHYSICAL ESP32 HARDWARE CONTROLS (DIRECT USB ACTUATION) -->
-        <div class="card real-hardware-card" id="realHardwareCard">
-          <div class="card-header-row">
-            <div class="card-title">
-              <span class="card-title-icon">⚡</span> Actuator &amp; Hardware Controls
-            </div>
-            <span class="badge-chip-status" id="hwSyncState">COM PORT STANDBY</span>
-          </div>
-
-          <!-- Real Pump Manual Toggle Button -->
-          <div class="real-pump-panel">
-            <div class="real-pump-info">
-              <div class="pump-title-group">
-                <span class="real-pump-title">💧 12V Rainmaker Pump</span>
-                <span class="badge-chip">Relay GPIO 23</span>
-              </div>
-              <span class="real-pump-sub" id="realPumpPinState">Relay Pin 23: <strong>HIGH (3.3V / Standby OFF)</strong></span>
-            </div>
-
-            <!-- Tactile Segmented Dual Controller -->
-            <div class="pump-segmented-group">
-              <button class="btn btn-pump-action btn-pump-off" id="btnPumpOff" title="Force Pump Standby (Relay Open)">
-                <span>🛑</span> Standby (OFF)
-              </button>
-              <button class="btn btn-pump-action btn-pump-on" id="btnPumpOn" title="Energize Pump (Relay Closed)">
-                <span>⛲</span> Run Pump (ON)
-              </button>
-            </div>
-
-            <!-- Pump Relay Status Display -->
-            <div class="pump-status-indicator" id="pumpStatusIndicator">
-              <span class="pump-dot" id="pumpDot"></span>
-              <span id="pumpStatusText">Real Pump Standby (Relay Open)</span>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
   </div>
