@@ -73,34 +73,9 @@
           </svg>
           <span id="audioLabel">Sound ON</span>
         </button>
-
-        <!-- View Schematic Button -->
-        <button id="viewSchematicBtn" class="btn btn-secondary" title="View Wiring Reference & Schematic">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-            <line x1="6" y1="6" x2="6.01" y2="6"></line>
-            <line x1="6" y1="18" x2="6.01" y2="18"></line>
-          </svg>
-          Wiring Table
-        </button>
       </div>
     </header>
 
-    <!-- Real Hardware Live Status Banner -->
-    <div id="hardwareLiveBanner" class="hardware-live-banner banner-hw-disconnected">
-      <div class="banner-content">
-        <span class="banner-icon">⚡</span>
-        <span id="hardwareBannerText">
-          <strong>Real Hardware Mode Active:</strong> Data streams directly from the physical ESP32 USB COM port. Connect your board and click <strong>"Connect ESP32"</strong>.
-        </span>
-      </div>
-      <div class="banner-actions">
-        <button id="btnBannerConnect" class="btn btn-primary-glow btn-compact">
-          ⚡ Select USB Port
-        </button>
-      </div>
-    </div>
 
     <!-- Main Workspace Grid -->
     <main class="dashboard-grid">
@@ -1115,14 +1090,6 @@
               <span class="pump-dot" id="pumpDot"></span>
               <span id="pumpStatusText">Real Pump Standby (Relay Open)</span>
             </div>
-
-            <!-- Invert Relay Logic Button if relay is Active HIGH or wired to NC -->
-            <div class="relay-invert-row">
-              <span class="relay-invert-hint">Signal inverted or wired to NC?</span>
-              <button class="btn btn-xs btn-invert" id="btnInvertRelay" title="Flip Active-LOW to Active-HIGH in firmware">
-                🔄 Invert Relay Logic
-              </button>
-            </div>
           </div>
 
           <!-- Real Physical Hardware Diagnostics & Overrides -->
@@ -1175,68 +1142,6 @@
         </div>
       </section>
     </main>
-
-    <!-- Schematic & Wiring Reference Modal -->
-    <div id="schematicModal" class="modal-overlay hidden">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h2>ESP32 Complete Connection Diagram & Table</h2>
-          <button id="closeModalBtn" class="btn-close">&times;</button>
-        </div>
-        <div class="modal-body">
-          <table class="wiring-table">
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>Component</th>
-                <th>Module Pin</th>
-                <th>ESP32 Pin / Power</th>
-                <th>Additional Components</th>
-                <th>Purpose</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>1</td><td rowspan="4"><strong>Raindrop Sensor</strong></td><td>AO</td><td>GPIO 34</td><td>-</td><td>Analog rain intensity (0-4095 ADC1)</td></tr>
-              <tr><td>2</td><td>DO (optional)</td><td>GPIO 25</td><td>-</td><td>Digital rain detection (active LOW)</td></tr>
-              <tr><td>3</td><td>VCC</td><td>3.3 V</td><td>-</td><td>Sensor power (3.3V)</td></tr>
-              <tr><td>4</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
-
-              <tr><td>5</td><td rowspan="3"><strong>Water Sensor</strong></td><td>Signal / S</td><td>GPIO 35</td><td>-</td><td>Analog water depth / immersion (0-4095 ADC1)</td></tr>
-              <tr><td>6</td><td>VCC</td><td>3.3 V*</td><td>-</td><td>Sensor power (*safe for 3.3V GPIO)</td></tr>
-              <tr><td>7</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
-
-              <tr><td>8</td><td rowspan="4"><strong>Ultrasonic Sensor</strong></td><td>TRIG</td><td>GPIO 5</td><td>-</td><td>Ultrasonic trigger pulse</td></tr>
-              <tr><td>9</td><td>ECHO</td><td>GPIO 18</td><td>1k&Omega; + 2k&Omega; voltage divider</td><td>Echo pulse (level shifted 5V &rarr; ~3.3V)</td></tr>
-              <tr><td>10</td><td>VCC</td><td>Sensor Specs</td><td>-</td><td>Module power (5V / VIN)</td></tr>
-              <tr><td>11</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
-
-              <tr><td>12</td><td rowspan="3"><strong>Buzzer Module</strong></td><td>Signal / IN</td><td>GPIO 26</td><td>-</td><td>Warning audio siren alarm</td></tr>
-              <tr><td>13</td><td>VCC</td><td>Module Specs</td><td>-</td><td>Module power (3.3V / 5V)</td></tr>
-              <tr><td>14</td><td>GND</td><td>GND</td><td>-</td><td>Common ground</td></tr>
-
-              <tr><td>15</td><td><strong>Green LED</strong></td><td>Anode (+)</td><td>GPIO 19</td><td>220–330 &Omega; Resistor</td><td>Low Risk Indicator (Safe / Normal)</td></tr>
-              <tr><td>16</td><td><strong>Yellow LED</strong></td><td>Anode (+)</td><td>GPIO 21</td><td>220–330 &Omega; Resistor</td><td>Medium Risk Indicator (Watch / Alert)</td></tr>
-              <tr><td>17</td><td><strong>Red LED</strong></td><td>Anode (+)</td><td>GPIO 22</td><td>220–330 &Omega; Resistor</td><td>High Risk Indicator (Flood Danger)</td></tr>
-              <tr><td>18</td><td><strong>All Three LEDs</strong></td><td>Cathode (−)</td><td>GND</td><td>Through respective resistors</td><td>Common return</td></tr>
-
-              <tr><td>19</td><td rowspan="3"><strong>Relay Module</strong></td><td>IN</td><td>GPIO 23</td><td>-</td><td>Pump control signal (Active LOW)</td></tr>
-              <tr><td>20</td><td>VCC</td><td>Module Specs</td><td>-</td><td>Relay coil power</td></tr>
-              <tr><td>21</td><td>GND</td><td>ESP32 GND</td><td>-</td><td>Common ground</td></tr>
-
-              <tr><td>22</td><td rowspan="4"><strong>Relay &amp; Water Pump Wiring</strong></td><td>COM</td><td>Power Supply (+)</td><td>-</td><td>Positive supply for the pump (e.g. 12V +)</td></tr>
-              <tr><td>23</td><td>NO</td><td>Pump (+)</td><td>-</td><td>Pump positive terminal (Red wire)</td></tr>
-              <tr><td>24</td><td>Pump (-)</td><td>Power Supply (-)</td><td>-</td><td>Negative terminal of pump power supply</td></tr>
-              <tr><td>25</td><td>NC</td><td>Unconnected</td><td>-</td><td>Leave unconnected</td></tr>
-            </tbody>
-          </table>
-          <div class="modal-footer-notes">
-            <p><strong>Note on Ultrasonic Echo (HC-SR04):</strong> The HC-SR04 operates at 5V. The 1k&Omega; and 2k&Omega; resistor voltage divider protects ESP32 GPIO 18 by dividing 5V down to 3.33V (Bucket: 26cm, Deadzone: 2.5cm, Max: 23.5cm).</p>
-            <p><strong>Dual-Confirmation Warning (15 cm):</strong> The water immersion sensor is mounted at 15.0 cm on GPIO 35. Warning status requires BOTH ultrasonic depth &ge; 15.0 cm and water sensor wet, preventing false alarms from surface ripples.</p>
-            <p><strong>Note on 12V Pump:</strong> The pump is powered entirely by the external 12V 2A power supply through the relay contacts (COM & NO), completely isolated from the ESP32.</p>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script src="simulator.js"></script>

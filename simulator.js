@@ -1787,18 +1787,24 @@
     setPumpMode('FORCE_ON');
   });
 
-  // Wiring Table Modal
-  viewSchematicBtn.addEventListener('click', () => {
-    schematicModal.classList.remove('hidden');
-  });
-  closeModalBtn.addEventListener('click', () => {
-    schematicModal.classList.add('hidden');
-  });
-  schematicModal.addEventListener('click', (e) => {
-    if (e.target === schematicModal) {
+  // Wiring Table Modal (Guarded)
+  if (viewSchematicBtn && schematicModal) {
+    viewSchematicBtn.addEventListener('click', () => {
+      schematicModal.classList.remove('hidden');
+    });
+  }
+  if (closeModalBtn && schematicModal) {
+    closeModalBtn.addEventListener('click', () => {
       schematicModal.classList.add('hidden');
-    }
-  });
+    });
+  }
+  if (schematicModal) {
+    schematicModal.addEventListener('click', (e) => {
+      if (e.target === schematicModal) {
+        schematicModal.classList.add('hidden');
+      }
+    });
+  }
 
   // Wokwi Copy Buttons
   const btnCopyDiagram = document.getElementById('btnCopyDiagram');
