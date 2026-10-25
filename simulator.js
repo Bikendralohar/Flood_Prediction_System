@@ -1055,13 +1055,19 @@
           if (btnBannerConnect) btnBannerConnect.style.display = 'none';
         }
       }
-      if (simControlsCard) simControlsCard.classList.add('sim-controls-disabled');
+      if (simControlsCard) {
+        simControlsCard.classList.add('hidden');
+        simControlsCard.classList.add('sim-controls-disabled');
+      }
       if (simDisabledNotice) simDisabledNotice.classList.remove('hidden');
       if (scenarioBar) scenarioBar.classList.add('hidden');
     } else {
       // Virtual Simulator mode
       if (hardwareLiveBanner) hardwareLiveBanner.classList.add('banner-hidden');
-      if (simControlsCard) simControlsCard.classList.remove('sim-controls-disabled');
+      if (simControlsCard) {
+        simControlsCard.classList.remove('hidden');
+        simControlsCard.classList.remove('sim-controls-disabled');
+      }
       if (simDisabledNotice) simDisabledNotice.classList.add('hidden');
       if (scenarioBar) scenarioBar.classList.remove('hidden');
       if (hardwareStatusBadge) {
